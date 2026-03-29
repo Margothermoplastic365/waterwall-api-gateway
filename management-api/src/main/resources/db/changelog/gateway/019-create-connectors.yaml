@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-019-create-integration-connectors
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: integration_connectors
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: config, type: jsonb }
+              - column: { name: enabled, type: boolean, defaultValueBoolean: true }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

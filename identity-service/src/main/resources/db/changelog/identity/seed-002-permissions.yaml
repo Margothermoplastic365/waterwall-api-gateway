@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-002-permissions
+      author: gateway-team
+      context: dev,uat,preprod,prod
+      comment: "All permissions per Section 3.3.4"
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO identity.permissions (id, resource, action, description) VALUES
+              -- User
+              (gen_random_uuid(), 'user', 'create', 'Create users'),
+              (gen_random_uuid(), 'user', 'read', 'View user details'),
+              (gen_random_uuid(), 'user', 'update', 'Update user profile'),
+              (gen_random_uuid(), 'user', 'delete', 'Delete users'),
+              (gen_random_uuid(), 'user', 'suspend', 'Suspend user accounts'),
+              -- Role
+              (gen_random_uuid(), 'role', 'create', 'Create roles'),
+              (gen_random_uuid(), 'role', 'read', 'View roles'),
+              (gen_random_uuid(), 'role', 'assign', 'Assign roles to users'),
+              (gen_random_uuid(), 'role', 'revoke', 'Revoke roles from users'),
+              -- Organization
+              (gen_random_uuid(), 'org', 'create', 'Create organizations'),
+              (gen_random_uuid(), 'org', 'read', 'View organizations'),
+              (gen_random_uuid(), 'org', 'update', 'Update organizations'),
+              (gen_random_uuid(), 'org', 'delete', 'Delete organizations'),
+              (gen_random_uuid(), 'org', 'invite', 'Invite members to org'),
+              -- API
+              (gen_random_uuid(), 'api', 'create', 'Create API definitions'),
+              (gen_random_uuid(), 'api', 'read', 'View API details'),
+              (gen_random_uuid(), 'api', 'update', 'Update API definitions'),
+              (gen_random_uuid(), 'api', 'delete', 'Delete APIs'),
+              (gen_random_uuid(), 'api', 'publish', 'Publish APIs'),
+              (gen_random_uuid(), 'api', 'deprecate', 'Deprecate APIs'),
+              (gen_random_uuid(), 'api', 'retire', 'Retire APIs'),
+              -- Policy
+              (gen_random_uuid(), 'policy', 'create', 'Create policies'),
+              (gen_random_uuid(), 'policy', 'read', 'View policies'),
+              (gen_random_uuid(), 'policy', 'attach', 'Attach policies to APIs'),
+              (gen_random_uuid(), 'policy', 'detach', 'Detach policies from APIs'),
+              -- Subscription
+              (gen_random_uuid(), 'subscription', 'create', 'Create subscriptions'),
+              (gen_random_uuid(), 'subscription', 'approve', 'Approve subscriptions'),
+              (gen_random_uuid(), 'subscription', 'reject', 'Reject subscriptions'),
+              (gen_random_uuid(), 'subscription', 'revoke', 'Revoke subscriptions'),
+              -- Application
+              (gen_random_uuid(), 'application', 'create', 'Create applications'),
+              (gen_random_uuid(), 'application', 'read', 'View applications'),
+              (gen_random_uuid(), 'application', 'regenerate_key', 'Regenerate API keys'),
+              -- Credential
+              (gen_random_uuid(), 'credential', 'create', 'Create credentials'),
+              (gen_random_uuid(), 'credential', 'read', 'View credentials'),
+              (gen_random_uuid(), 'credential', 'revoke', 'Revoke credentials'),
+              (gen_random_uuid(), 'credential', 'rotate', 'Rotate credentials'),
+              -- Analytics
+              (gen_random_uuid(), 'analytics', 'view', 'View analytics'),
+              (gen_random_uuid(), 'analytics', 'export', 'Export analytics'),
+              -- Audit
+              (gen_random_uuid(), 'audit', 'read', 'View audit logs'),
+              -- Gateway
+              (gen_random_uuid(), 'gateway', 'configure', 'Configure gateway'),
+              (gen_random_uuid(), 'gateway', 'restart', 'Restart gateway nodes'),
+              -- Environment
+              (gen_random_uuid(), 'environment', 'create', 'Create environments'),
+              (gen_random_uuid(), 'environment', 'dev:deploy', 'Deploy to DEV'),
+              (gen_random_uuid(), 'environment', 'uat:deploy', 'Deploy to UAT'),
+              (gen_random_uuid(), 'environment', 'preprod:deploy', 'Deploy to PRE-PROD'),
+              (gen_random_uuid(), 'environment', 'prod:deploy', 'Deploy to PROD'),
+              (gen_random_uuid(), 'environment', 'promote', 'Promote between environments'),
+              (gen_random_uuid(), 'environment', 'rollback', 'Rollback deployments'),
+              (gen_random_uuid(), 'environment', 'compare', 'Compare environments'),
+              -- Plan
+              (gen_random_uuid(), 'plan', 'create', 'Create subscription plans'),
+              (gen_random_uuid(), 'plan', 'read', 'View subscription plans'),
+              (gen_random_uuid(), 'plan', 'update', 'Update subscription plans'),
+              (gen_random_uuid(), 'plan', 'delete', 'Delete subscription plans')
+              ON CONFLICT (resource, action) DO NOTHING;
+      rollback:
+        - sql:
+            sql: DELETE FROM identity.permissions;

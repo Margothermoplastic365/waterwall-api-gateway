@@ -1,0 +1,263 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#f8fafc" rx="12"/>
+
+  <!-- Title -->
+  <rect x="0" y="0" width="1200" height="60" fill="url(#headerGrad)" rx="12"/>
+  <rect x="0" y="30" width="1200" height="30" fill="url(#headerGrad)"/>
+  <text x="40" y="38" fill="#f1f5f9" font-size="18" font-weight="700">Waterwall API Gateway — Versioning, Environment &amp; Maker-Checker Flow</text>
+
+  <!-- ========================================= -->
+  <!-- SECTION 1: API Status Lifecycle -->
+  <!-- ========================================= -->
+  <text x="40" y="95" fill="#1e293b" font-size="14" font-weight="700">API Status Lifecycle</text>
+
+  <!-- DRAFT -->
+  <rect x="40" y="110" width="100" height="36" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="90" y="133" text-anchor="middle" fill="#475569" font-size="12" font-weight="600">DRAFT</text>
+
+  <line x1="140" y1="128" x2="170" y2="128" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- IN_REVIEW -->
+  <rect x="175" y="110" width="110" height="36" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1"/>
+  <text x="230" y="133" text-anchor="middle" fill="#92400e" font-size="12" font-weight="600">IN_REVIEW</text>
+
+  <line x1="285" y1="128" x2="315" y2="128" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- PUBLISHED -->
+  <rect x="320" y="110" width="115" height="36" rx="6" fill="#dcfce7" stroke="#86efac" stroke-width="1"/>
+  <text x="377" y="133" text-anchor="middle" fill="#166534" font-size="12" font-weight="600">PUBLISHED</text>
+
+  <line x1="435" y1="128" x2="465" y2="128" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- DEPRECATED -->
+  <rect x="470" y="110" width="120" height="36" rx="6" fill="#ffedd5" stroke="#fdba74" stroke-width="1"/>
+  <text x="530" y="133" text-anchor="middle" fill="#9a3412" font-size="12" font-weight="600">DEPRECATED</text>
+
+  <line x1="590" y1="128" x2="620" y2="128" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- RETIRED -->
+  <rect x="625" y="110" width="100" height="36" rx="6" fill="#fef2f2" stroke="#fecaca" stroke-width="1"/>
+  <text x="675" y="133" text-anchor="middle" fill="#991b1b" font-size="12" font-weight="600">RETIRED</text>
+
+  <!-- ========================================= -->
+  <!-- SECTION 2: Version + Environment Model -->
+  <!-- ========================================= -->
+  <text x="40" y="185" fill="#1e293b" font-size="14" font-weight="700">Versioning &amp; Environment Model</text>
+
+  <!-- API Family box -->
+  <rect x="40" y="200" width="380" height="240" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="40" y="200" width="380" height="32" rx="8" fill="#1e293b"/>
+  <rect x="40" y="220" width="380" height="12" fill="#1e293b"/>
+  <text x="55" y="220" fill="#f1f5f9" font-size="12" font-weight="600">Payment Processing API (api_group_id: xxx)</text>
+
+  <!-- Versions -->
+  <text x="55" y="255" fill="#94a3b8" font-size="11">v2.0.0</text>
+  <rect x="115" y="243" width="80" height="20" rx="10" fill="#ffedd5"/>
+  <text x="155" y="257" text-anchor="middle" fill="#9a3412" font-size="10" font-weight="600">DEPRECATED</text>
+
+  <text x="55" y="280" fill="#0f172a" font-size="11" font-weight="600">v2.1.0</text>
+  <rect x="115" y="268" width="55" height="20" rx="10" fill="#dcfce7"/>
+  <text x="142" y="282" text-anchor="middle" fill="#166534" font-size="10" font-weight="600">ACTIVE</text>
+  <text x="180" y="282" fill="#3b82f6" font-size="10" font-weight="500">★ recommended</text>
+
+  <text x="55" y="305" fill="#0f172a" font-size="11" font-weight="600">v3.0.0</text>
+  <rect x="115" y="293" width="55" height="20" rx="10" fill="#dcfce7"/>
+  <text x="142" y="307" text-anchor="middle" fill="#166534" font-size="10" font-weight="600">ACTIVE</text>
+
+  <text x="55" y="330" fill="#94a3b8" font-size="11">v3.1.0</text>
+  <rect x="115" y="318" width="50" height="20" rx="10" fill="#f1f5f9"/>
+  <text x="140" y="332" text-anchor="middle" fill="#475569" font-size="10" font-weight="600">DRAFT</text>
+
+  <text x="55" y="360" fill="#64748b" font-size="10">Max 5 non-RETIRED versions</text>
+  <text x="55" y="375" fill="#dc2626" font-size="10" font-weight="600">Sensitivity: HIGH (3 approval levels)</text>
+
+  <!-- Arrow to Environments -->
+  <line x1="420" y1="310" x2="470" y2="310" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+  <!-- Environment boxes -->
+  <rect x="475" y="200" width="300" height="240" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="475" y="200" width="300" height="32" rx="8" fill="#3b82f6"/>
+  <rect x="475" y="220" width="300" height="12" fill="#3b82f6"/>
+  <text x="490" y="220" fill="#fff" font-size="12" font-weight="600">v2.1.0 Deployments &amp; Keys</text>
+
+  <!-- DEV -->
+  <rect x="490" y="245" width="270" height="38" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="500" y="261" fill="#1e40af" font-size="11" font-weight="700">DEV</text>
+  <text x="500" y="275" fill="#64748b" font-size="9">upstream: payment-dev:8090 | key: dev_acme_xxx | RELAXED</text>
+
+  <!-- UAT -->
+  <rect x="490" y="290" width="270" height="38" rx="6" fill="#fffbeb" stroke="#fde68a" stroke-width="1"/>
+  <text x="500" y="306" fill="#92400e" font-size="11" font-weight="700">UAT</text>
+  <text x="500" y="320" fill="#64748b" font-size="9">upstream: payment-uat:8090 | key: uat_acme_xxx | STANDARD</text>
+
+  <!-- PROD -->
+  <rect x="490" y="335" width="270" height="38" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
+  <text x="500" y="351" fill="#166534" font-size="11" font-weight="700">PROD</text>
+  <text x="500" y="365" fill="#64748b" font-size="9">upstream: payment-prod:8090 | key: live_acme_xxx | STRICT</text>
+
+  <!-- Cross-env warning -->
+  <rect x="490" y="380" width="270" height="22" rx="4" fill="#fef2f2"/>
+  <text x="500" y="395" fill="#dc2626" font-size="9" font-weight="600">dev key on prod endpoint = REJECTED</text>
+
+  <!-- Key scoping -->
+  <rect x="490" y="408" width="270" height="22" rx="4" fill="#dcfce7"/>
+  <text x="500" y="423" fill="#166534" font-size="9" font-weight="600">Each env: own keys, own subscriptions, own rate limits</text>
+
+  <!-- ========================================= -->
+  <!-- SECTION 3: Maker-Checker Flow -->
+  <!-- ========================================= -->
+  <text x="40" y="475" fill="#1e293b" font-size="14" font-weight="700">Maker-Checker Approval Flow (HIGH Sensitivity)</text>
+
+  <!-- Step 1: Publisher submits -->
+  <rect x="40" y="490" width="160" height="60" rx="8" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="120" y="513" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="700">Paula Publisher</text>
+  <text x="120" y="528" text-anchor="middle" fill="#7c3aed" font-size="10">Creates v3.0.0</text>
+  <text x="120" y="543" text-anchor="middle" fill="#7c3aed" font-size="10">Submits for review</text>
+
+  <line x1="200" y1="520" x2="240" y2="520" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+  <!-- Level 1 -->
+  <rect x="245" y="490" width="160" height="60" rx="8" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="325" y="508" text-anchor="middle" fill="#1e40af" font-size="10" font-weight="700">LEVEL 1</text>
+  <text x="325" y="523" text-anchor="middle" fill="#1e40af" font-size="11" font-weight="600">Rick (Technical)</text>
+  <text x="325" y="538" text-anchor="middle" fill="#3b82f6" font-size="10">version:review_l1</text>
+
+  <line x1="405" y1="520" x2="445" y2="520" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+  <!-- Level 2 -->
+  <rect x="450" y="490" width="160" height="60" rx="8" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1.5"/>
+  <text x="530" y="508" text-anchor="middle" fill="#065f46" font-size="10" font-weight="700">LEVEL 2</text>
+  <text x="530" y="523" text-anchor="middle" fill="#065f46" font-size="11" font-weight="600">Clara (Compliance)</text>
+  <text x="530" y="538" text-anchor="middle" fill="#16a34a" font-size="10">version:review_l2</text>
+
+  <line x1="610" y1="520" x2="650" y2="520" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+  <!-- Level 3 -->
+  <rect x="655" y="490" width="160" height="60" rx="8" fill="#fef3c7" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="735" y="508" text-anchor="middle" fill="#92400e" font-size="10" font-weight="700">LEVEL 3</text>
+  <text x="735" y="523" text-anchor="middle" fill="#92400e" font-size="11" font-weight="600">Admin (Platform)</text>
+  <text x="735" y="538" text-anchor="middle" fill="#d97706" font-size="10">version:review_l3</text>
+
+  <line x1="815" y1="520" x2="855" y2="520" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+  <!-- ACTIVE -->
+  <rect x="860" y="498" width="100" height="44" rx="8" fill="#dcfce7" stroke="#86efac" stroke-width="2"/>
+  <text x="910" y="525" text-anchor="middle" fill="#166534" font-size="13" font-weight="700">ACTIVE</text>
+
+  <!-- Maker-Checker Rule -->
+  <rect x="40" y="565" width="920" height="28" rx="6" fill="#fef2f2" stroke="#fecaca" stroke-width="1"/>
+  <text x="55" y="583" fill="#991b1b" font-size="11" font-weight="600">Rule: Submitter ≠ Approver at every level. Each level must be a different person. Permission-based enforcement.</text>
+
+  <!-- ========================================= -->
+  <!-- SECTION 4: Developer Subscribe Flow -->
+  <!-- ========================================= -->
+  <text x="40" y="625" fill="#1e293b" font-size="14" font-weight="700">Developer Subscribe Flow</text>
+
+  <!-- Steps -->
+  <rect x="40" y="640" width="170" height="55" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="50" y="657" fill="#1e40af" font-size="10" font-weight="700">STEP 1</text>
+  <text x="50" y="672" fill="#1e293b" font-size="11" font-weight="600">Pick Version</text>
+  <text x="50" y="685" fill="#64748b" font-size="9">v3.0.0 (recommended)</text>
+
+  <line x1="210" y1="667" x2="240" y2="667" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="245" y="640" width="170" height="55" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="255" y="657" fill="#166534" font-size="10" font-weight="700">STEP 2</text>
+  <text x="255" y="672" fill="#1e293b" font-size="11" font-weight="600">Pick Environment</text>
+  <text x="255" y="685" fill="#64748b" font-size="9">DEV / UAT / PROD</text>
+
+  <line x1="415" y1="667" x2="445" y2="667" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="450" y="640" width="170" height="55" rx="8" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="460" y="657" fill="#6d28d9" font-size="10" font-weight="700">STEP 3</text>
+  <text x="460" y="672" fill="#1e293b" font-size="11" font-weight="600">Pick Plan</text>
+  <text x="460" y="685" fill="#64748b" font-size="9">Free / Pro / Enterprise</text>
+
+  <line x1="620" y1="667" x2="650" y2="667" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="655" y="640" width="170" height="55" rx="8" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="665" y="657" fill="#92400e" font-size="10" font-weight="700">STEP 4</text>
+  <text x="665" y="672" fill="#1e293b" font-size="11" font-weight="600">Pick Application</text>
+  <text x="665" y="685" fill="#64748b" font-size="9">Acme Payment Gateway</text>
+
+  <line x1="825" y1="667" x2="855" y2="667" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Result -->
+  <rect x="860" y="640" width="120" height="55" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="920" y="662" text-anchor="middle" fill="#166534" font-size="11" font-weight="700">API Key</text>
+  <text x="920" y="678" text-anchor="middle" fill="#16a34a" font-size="10">dev_acme_xxx</text>
+  <text x="920" y="690" text-anchor="middle" fill="#64748b" font-size="8">env-scoped</text>
+
+  <!-- ========================================= -->
+  <!-- SECTION 5: Environment Promotion Pipeline -->
+  <!-- ========================================= -->
+  <text x="40" y="735" fill="#1e293b" font-size="14" font-weight="700">Environment Promotion Pipeline</text>
+
+  <!-- DEV -->
+  <rect x="40" y="750" width="120" height="45" rx="8" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="100" y="770" text-anchor="middle" fill="#1e40af" font-size="13" font-weight="700">DEV</text>
+  <text x="100" y="785" text-anchor="middle" fill="#64748b" font-size="9">auto-deploy</text>
+
+  <line x1="160" y1="772" x2="210" y2="772" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="185" y="765" text-anchor="middle" fill="#3b82f6" font-size="8" font-weight="600">auto</text>
+
+  <!-- UAT -->
+  <rect x="215" y="750" width="120" height="45" rx="8" fill="#fef3c7" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="275" y="770" text-anchor="middle" fill="#92400e" font-size="13" font-weight="700">UAT</text>
+  <text x="275" y="785" text-anchor="middle" fill="#64748b" font-size="9">L1 approval</text>
+
+  <line x1="335" y1="772" x2="385" y2="772" stroke="#d97706" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="360" y="765" text-anchor="middle" fill="#d97706" font-size="8" font-weight="600">L1</text>
+
+  <!-- STAGING -->
+  <rect x="390" y="750" width="120" height="45" rx="8" fill="#f3e8ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="450" y="770" text-anchor="middle" fill="#6d28d9" font-size="13" font-weight="700">STAGING</text>
+  <text x="450" y="785" text-anchor="middle" fill="#64748b" font-size="9">L1+L2 (if HIGH)</text>
+
+  <line x1="510" y1="772" x2="560" y2="772" stroke="#dc2626" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="535" y="765" text-anchor="middle" fill="#dc2626" font-size="8" font-weight="600">Full chain</text>
+
+  <!-- PROD -->
+  <rect x="565" y="750" width="120" height="45" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="625" y="770" text-anchor="middle" fill="#166534" font-size="13" font-weight="700">PROD</text>
+  <text x="625" y="785" text-anchor="middle" fill="#64748b" font-size="9">All levels required</text>
+
+  <!-- Sensitivity Legend -->
+  <text x="40" y="830" fill="#1e293b" font-size="12" font-weight="700">Sensitivity Levels</text>
+
+  <rect x="40" y="840" width="60" height="22" rx="4" fill="#f1f5f9"/>
+  <text x="70" y="855" text-anchor="middle" fill="#475569" font-size="10" font-weight="600">LOW</text>
+  <text x="110" y="855" fill="#64748b" font-size="10">1 level</text>
+
+  <rect x="200" y="840" width="75" height="22" rx="4" fill="#fef3c7"/>
+  <text x="237" y="855" text-anchor="middle" fill="#92400e" font-size="10" font-weight="600">MEDIUM</text>
+  <text x="285" y="855" fill="#64748b" font-size="10">2 levels</text>
+
+  <rect x="375" y="840" width="60" height="22" rx="4" fill="#fef2f2"/>
+  <text x="405" y="855" text-anchor="middle" fill="#991b1b" font-size="10" font-weight="600">HIGH</text>
+  <text x="445" y="855" fill="#64748b" font-size="10">3 levels</text>
+
+  <rect x="535" y="840" width="80" height="22" rx="4" fill="#fee2e2"/>
+  <text x="575" y="855" text-anchor="middle" fill="#7f1d1d" font-size="10" font-weight="600">CRITICAL</text>
+  <text x="625" y="855" fill="#64748b" font-size="10">3 levels + 24h cooldown</text>
+
+  <!-- Roles Legend -->
+  <text x="40" y="888" fill="#64748b" font-size="10">Roles: API_PUBLISHER (maker) → API_PUBLISHER_ADMIN (L1) → COMPLIANCE_OFFICER (L2) → PLATFORM_ADMIN (L3)</text>
+</svg>

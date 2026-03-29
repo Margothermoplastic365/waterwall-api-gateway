@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-notifications
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: notification
+            tableName: notifications
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: body
+                  type: text
+              - column:
+                  name: type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: read
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            schemaName: notification
+            tableName: notifications
+            indexName: idx_notifications_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            schemaName: notification
+            tableName: notifications
+            indexName: idx_notifications_user_read_created
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: read
+              - column:
+                  name: created_at
+                  descending: true
+      rollback:
+        - dropTable:
+            schemaName: notification
+            tableName: notifications

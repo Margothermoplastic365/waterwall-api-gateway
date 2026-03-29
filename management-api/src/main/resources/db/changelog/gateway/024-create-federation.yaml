@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-024-create-federated-gateways
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: federated_gateways
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: api_url, type: varchar(1024), constraints: { nullable: false } }
+              - column: { name: api_key_encrypted, type: varchar(2048) }
+              - column: { name: status, type: varchar(50), defaultValue: "ACTIVE" }
+              - column: { name: last_sync_at, type: timestamptz }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-024-create-workspaces
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: workspaces
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: slug, type: varchar(255), constraints: { nullable: false, unique: true } }
+              - column: { name: org_id, type: uuid }
+              - column: { name: guardrail_policies, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

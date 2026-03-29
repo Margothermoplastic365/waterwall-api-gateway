@@ -1,0 +1,274 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 900" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#43e97b"/></marker>
+    <marker id="arrBlue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#42a5f5"/></marker>
+    <marker id="arrRed" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#ef5350"/></marker>
+    <marker id="arrGray" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#607d8b"/></marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1300" height="900" fill="#f8f9fc" rx="8"/>
+
+  <!-- Title -->
+  <rect x="0" y="0" width="1300" height="55" fill="#1a472a" rx="8"/>
+  <text x="650" y="35" text-anchor="middle" fill="white" font-size="20" font-weight="bold">IDENTITY SERVICE — INTERNAL ARCHITECTURE (Spring Boot)</text>
+
+  <!-- ============ EXTERNAL CONSUMERS (Left) ============ -->
+  <rect x="20" y="75" width="185" height="380" rx="8" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1.5"/>
+  <text x="112" y="95" text-anchor="middle" fill="#283593" font-size="12" font-weight="bold">CONSUMERS</text>
+
+  <rect x="35" y="108" width="155" height="40" rx="6" fill="white" stroke="#5c6bc0" stroke-width="1" filter="url(#shadow)"/>
+  <text x="112" y="125" text-anchor="middle" fill="#283593" font-size="10" font-weight="bold">Developer Portal</text>
+  <text x="112" y="140" text-anchor="middle" fill="#666" font-size="8">Login, Register, Profile</text>
+
+  <rect x="35" y="158" width="155" height="40" rx="6" fill="white" stroke="#5c6bc0" stroke-width="1" filter="url(#shadow)"/>
+  <text x="112" y="175" text-anchor="middle" fill="#283593" font-size="10" font-weight="bold">Admin Dashboard</text>
+  <text x="112" y="190" text-anchor="middle" fill="#666" font-size="8">User/Org/Role Mgmt</text>
+
+  <rect x="35" y="208" width="155" height="40" rx="6" fill="white" stroke="#5c6bc0" stroke-width="1" filter="url(#shadow)"/>
+  <text x="112" y="225" text-anchor="middle" fill="#283593" font-size="10" font-weight="bold">Management API</text>
+  <text x="112" y="240" text-anchor="middle" fill="#666" font-size="8">Permission checks</text>
+
+  <rect x="35" y="258" width="155" height="40" rx="6" fill="white" stroke="#ef5350" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="112" y="275" text-anchor="middle" fill="#c62828" font-size="10" font-weight="bold">Gateway Runtime</text>
+  <text x="112" y="290" text-anchor="middle" fill="#666" font-size="8">JWT/Key validation</text>
+
+  <rect x="35" y="308" width="155" height="40" rx="6" fill="white" stroke="#7c4dff" stroke-width="1" filter="url(#shadow)"/>
+  <text x="112" y="325" text-anchor="middle" fill="#4a148c" font-size="10" font-weight="bold">CI/CD Pipelines</text>
+  <text x="112" y="340" text-anchor="middle" fill="#666" font-size="8">Service accounts</text>
+
+  <rect x="35" y="358" width="155" height="40" rx="6" fill="white" stroke="#ff9800" stroke-width="1" filter="url(#shadow)"/>
+  <text x="112" y="375" text-anchor="middle" fill="#e65100" font-size="10" font-weight="bold">External Apps</text>
+  <text x="112" y="390" text-anchor="middle" fill="#666" font-size="8">OAuth2 clients</text>
+
+  <!-- Arrows from consumers to service -->
+  <line x1="205" y1="128" x2="235" y2="128" stroke="#42a5f5" stroke-width="1.5" marker-end="url(#arrBlue)"/>
+  <line x1="205" y1="178" x2="235" y2="178" stroke="#42a5f5" stroke-width="1.5" marker-end="url(#arrBlue)"/>
+  <line x1="205" y1="228" x2="235" y2="228" stroke="#42a5f5" stroke-width="1.5" marker-end="url(#arrBlue)"/>
+  <line x1="205" y1="278" x2="235" y2="278" stroke="#ef5350" stroke-width="1.5" marker-end="url(#arrRed)"/>
+  <line x1="205" y1="328" x2="235" y2="340" stroke="#607d8b" stroke-width="1" marker-end="url(#arrGray)"/>
+  <line x1="205" y1="378" x2="235" y2="365" stroke="#607d8b" stroke-width="1" marker-end="url(#arrGray)"/>
+
+  <!-- ============ IDENTITY SERVICE (Center) ============ -->
+  <rect x="235" y="70" width="780" height="645" rx="12" fill="#e8f5e9" stroke="#43e97b" stroke-width="2"/>
+  <text x="625" y="92" text-anchor="middle" fill="#1b5e20" font-size="14" font-weight="bold">identity-service (Spring Boot 3.x)</text>
+
+  <!-- == API Layer == -->
+  <rect x="252" y="102" width="745" height="62" rx="8" fill="white" stroke="#66bb6a" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="260" y="120" fill="#2e7d32" font-size="11" font-weight="bold">REST API ENDPOINTS</text>
+
+  <rect x="260" y="127" width="95" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="307" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/oauth2/**</text>
+
+  <rect x="362" y="127" width="75" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="399" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/v1/users</text>
+
+  <rect x="444" y="127" width="70" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="479" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/v1/orgs</text>
+
+  <rect x="521" y="127" width="70" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="556" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/v1/roles</text>
+
+  <rect x="598" y="127" width="85" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="640" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/v1/api-keys</text>
+
+  <rect x="690" y="127" width="60" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="720" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/v1/mfa</text>
+
+  <rect x="757" y="127" width="65" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="789" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/v1/audit</text>
+
+  <rect x="829" y="127" width="100" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="879" y="146" text-anchor="middle" fill="#1b5e20" font-size="8" font-weight="bold">/.well-known/**</text>
+
+  <!-- == Spring Security Filter Chain == -->
+  <rect x="252" y="175" width="745" height="42" rx="8" fill="#e3f2fd" stroke="#42a5f5" stroke-width="1.5"/>
+  <text x="260" y="193" fill="#1565c0" font-size="10" font-weight="bold">SPRING SECURITY FILTER CHAIN</text>
+  <text x="260" y="207" fill="#1976d2" font-size="8">CORS → CSRF → Auth Filter (Form/Basic/OAuth2/LDAP/SAML-SP/X.509) → Session Mgmt → Authorization → Exception Handling</text>
+
+  <!-- == Core Services Row 1 == -->
+  <!-- Spring Authorization Server -->
+  <rect x="252" y="228" width="240" height="150" rx="8" fill="white" stroke="#00897b" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="252" y="228" width="240" height="26" rx="8" fill="#00897b"/>
+  <text x="372" y="246" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Spring Authorization Server</text>
+  <text x="259" y="267" fill="#00695c" font-size="9" font-weight="bold">[SPRING — built-in]</text>
+  <text x="259" y="282" fill="#333" font-size="9">• OAuth2 Authorization Endpoint</text>
+  <text x="259" y="296" fill="#333" font-size="9">• Token Endpoint (JWT issuance)</text>
+  <text x="259" y="310" fill="#333" font-size="9">• Token Introspection / Revocation</text>
+  <text x="259" y="324" fill="#333" font-size="9">• OIDC Discovery + UserInfo</text>
+  <text x="259" y="338" fill="#333" font-size="9">• JWKS Endpoint (key rotation)</text>
+  <text x="259" y="352" fill="#333" font-size="9">• Dynamic Client Registration</text>
+  <text x="259" y="366" fill="#333" font-size="9">• PKCE, DPoP, Device Code</text>
+
+  <!-- User Management -->
+  <rect x="505" y="228" width="240" height="150" rx="8" fill="white" stroke="#ef6c00" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="505" y="228" width="240" height="26" rx="8" fill="#ef6c00"/>
+  <text x="625" y="246" text-anchor="middle" fill="white" font-size="11" font-weight="bold">User Management</text>
+  <text x="512" y="267" fill="#e65100" font-size="9" font-weight="bold">[CUSTOM BUILD]</text>
+  <text x="512" y="282" fill="#333" font-size="9">• Registration + Email Verify</text>
+  <text x="512" y="296" fill="#333" font-size="9">• Profile CRUD (extended fields)</text>
+  <text x="512" y="310" fill="#333" font-size="9">• Password Reset Flow</text>
+  <text x="512" y="324" fill="#333" font-size="9">• Account State Machine</text>
+  <text x="512" y="338" fill="#333" font-size="9">• User Directory (search/filter)</text>
+  <text x="512" y="352" fill="#333" font-size="9">• Social Login Account Linking</text>
+  <text x="512" y="366" fill="#333" font-size="9">• GDPR Data Export / Deletion</text>
+
+  <!-- RBAC Engine -->
+  <rect x="758" y="228" width="222" height="150" rx="8" fill="white" stroke="#d32f2f" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="758" y="228" width="222" height="26" rx="8" fill="#d32f2f"/>
+  <text x="869" y="246" text-anchor="middle" fill="white" font-size="11" font-weight="bold">RBAC Engine</text>
+  <text x="765" y="267" fill="#c62828" font-size="9" font-weight="bold">[CUSTOM BUILD — most complex]</text>
+  <text x="765" y="282" fill="#333" font-size="9">• 3-Level Scope Resolution</text>
+  <text x="765" y="296" fill="#333" font-size="9">  (Global → Org → Resource)</text>
+  <text x="765" y="310" fill="#333" font-size="9">• Permission Evaluator</text>
+  <text x="765" y="324" fill="#333" font-size="9">• Custom Role CRUD</text>
+  <text x="765" y="338" fill="#333" font-size="9">• Delegation Rules</text>
+  <text x="765" y="352" fill="#333" font-size="9">• Time-bound Assignments</text>
+  <text x="765" y="366" fill="#333" font-size="9">• Tag-based Resource ACLs</text>
+
+  <!-- == Core Services Row 2 == -->
+  <!-- MFA Module -->
+  <rect x="252" y="390" width="175" height="130" rx="8" fill="white" stroke="#7b1fa2" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="252" y="390" width="175" height="26" rx="8" fill="#7b1fa2"/>
+  <text x="339" y="408" text-anchor="middle" fill="white" font-size="11" font-weight="bold">MFA Module</text>
+  <text x="259" y="429" fill="#6a1b9a" font-size="9" font-weight="bold">[CUSTOM + java-totp]</text>
+  <text x="259" y="444" fill="#333" font-size="9">• TOTP (RFC 6238)</text>
+  <text x="259" y="458" fill="#333" font-size="9">• QR Code (ZXing)</text>
+  <text x="259" y="472" fill="#333" font-size="9">• Email OTP (Spring Mail)</text>
+  <text x="259" y="486" fill="#333" font-size="9">• SMS OTP (Twilio)</text>
+  <text x="259" y="500" fill="#333" font-size="9">• Recovery Codes</text>
+  <text x="259" y="514" fill="#333" font-size="9">• Step-up Auth</text>
+
+  <!-- Organization Management -->
+  <rect x="440" y="390" width="175" height="130" rx="8" fill="white" stroke="#00838f" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="440" y="390" width="175" height="26" rx="8" fill="#00838f"/>
+  <text x="527" y="408" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Org Management</text>
+  <text x="447" y="429" fill="#006064" font-size="9" font-weight="bold">[CUSTOM BUILD]</text>
+  <text x="447" y="444" fill="#333" font-size="9">• Org CRUD + State</text>
+  <text x="447" y="458" fill="#333" font-size="9">• Membership Mgmt</text>
+  <text x="447" y="472" fill="#333" font-size="9">• Email Invitations</text>
+  <text x="447" y="486" fill="#333" font-size="9">• Per-Org SSO Config</text>
+  <text x="447" y="500" fill="#333" font-size="9">• Per-Org Settings</text>
+  <text x="447" y="514" fill="#333" font-size="9">• Ownership Transfer</text>
+
+  <!-- API Key / Credential Manager -->
+  <rect x="628" y="390" width="175" height="130" rx="8" fill="white" stroke="#558b2f" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="628" y="390" width="175" height="26" rx="8" fill="#558b2f"/>
+  <text x="715" y="408" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Credential Manager</text>
+  <text x="635" y="429" fill="#33691e" font-size="9" font-weight="bold">[CUSTOM BUILD]</text>
+  <text x="635" y="444" fill="#333" font-size="9">• API Key Gen/Rotate</text>
+  <text x="635" y="458" fill="#333" font-size="9">• Key Hash Storage</text>
+  <text x="635" y="472" fill="#333" font-size="9">• mTLS Cert Mgmt</text>
+  <text x="635" y="486" fill="#333" font-size="9">• Basic Auth Creds</text>
+  <text x="635" y="500" fill="#333" font-size="9">• Credential Rotation</text>
+  <text x="635" y="514" fill="#333" font-size="9">• Expiry Tracking</text>
+
+  <!-- Security & Audit -->
+  <rect x="816" y="390" width="164" height="130" rx="8" fill="white" stroke="#455a64" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="816" y="390" width="164" height="26" rx="8" fill="#455a64"/>
+  <text x="898" y="408" text-anchor="middle" fill="white" font-size="11" font-weight="bold">Security &amp; Audit</text>
+  <text x="823" y="429" fill="#37474f" font-size="9" font-weight="bold">[CUSTOM + Bucket4j/Passay]</text>
+  <text x="823" y="444" fill="#333" font-size="9">• Brute-Force Protect</text>
+  <text x="823" y="458" fill="#333" font-size="9">• Account Lockout</text>
+  <text x="823" y="472" fill="#333" font-size="9">• Password Policy</text>
+  <text x="823" y="486" fill="#333" font-size="9">• Login Rate Limiting</text>
+  <text x="823" y="500" fill="#333" font-size="9">• Auth Event Logging</text>
+  <text x="823" y="514" fill="#333" font-size="9">• Audit Trail (DB)</text>
+
+  <!-- == Data Layer == -->
+  <rect x="252" y="535" width="728" height="42" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+  <text x="260" y="555" fill="#e65100" font-size="10" font-weight="bold">SPRING DATA JPA (Hibernate)</text>
+  <text x="260" y="568" fill="#f57c00" font-size="8">UserEntity | OrgEntity | RoleEntity | PermissionEntity | RoleAssignmentEntity | ApiKeyEntity | AuditEventEntity | MfaSecretEntity</text>
+
+  <!-- == Password Encoding == -->
+  <rect x="252" y="588" width="360" height="35" rx="6" fill="#e0f2f1" stroke="#00897b" stroke-width="1"/>
+  <text x="260" y="605" fill="#00695c" font-size="9" font-weight="bold">PASSWORD ENCODING [SPRING]:</text>
+  <text x="260" y="618" fill="#00897b" font-size="8">DelegatingPasswordEncoder → Argon2 (default) | BCrypt (fallback) | SCrypt | PBKDF2</text>
+
+  <!-- == Session == -->
+  <rect x="625" y="588" width="355" height="35" rx="6" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+  <text x="633" y="605" fill="#283593" font-size="9" font-weight="bold">SESSION MANAGEMENT [SPRING]:</text>
+  <text x="633" y="618" fill="#5c6bc0" font-size="8">Spring Session + Redis | Concurrent limits | Idle/Abs timeout | Indexed by principal</text>
+
+  <!-- == External SSO == -->
+  <rect x="252" y="636" width="728" height="35" rx="6" fill="#fce4ec" stroke="#e91e63" stroke-width="1"/>
+  <text x="260" y="653" fill="#880e4f" font-size="9" font-weight="bold">EXTERNAL SSO [SPRING + CUSTOM]:</text>
+  <text x="260" y="666" fill="#c2185b" font-size="8">OAuth2 Client (Google, GitHub, Azure AD) [SPRING] | SAML2 SP (Corporate IdP) [SPRING] | LDAP/AD Bind Auth [SPRING] | Account Linking [CUSTOM]</text>
+
+  <!-- JWT Claims box -->
+  <rect x="252" y="685" width="728" height="25" rx="4" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1"/>
+  <text x="260" y="702" fill="#2e7d32" font-size="9" font-weight="bold">JWT CLAIMS:</text>
+  <text x="370" y="702" fill="#388e3c" font-size="8">sub (userId) | org_id | roles[] | permissions[] | scope | app_id | plan | exp | iss | aud</text>
+
+  <!-- ============ INFRASTRUCTURE (Bottom) ============ -->
+  <rect x="20" y="730" width="1260" height="150" rx="10" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+  <text x="35" y="752" fill="#e65100" font-size="12" font-weight="bold">PERSISTENCE &amp; INFRASTRUCTURE</text>
+
+  <!-- PostgreSQL -->
+  <rect x="35" y="764" width="250" height="100" rx="8" fill="white" stroke="#1565c0" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="35" y="764" width="250" height="24" rx="8" fill="#1565c0"/>
+  <text x="160" y="781" text-anchor="middle" fill="white" font-size="10" font-weight="bold">PostgreSQL</text>
+  <text x="45" y="802" fill="#333" font-size="9">Tables:</text>
+  <text x="45" y="816" fill="#555" font-size="8">users | user_profiles | organizations</text>
+  <text x="45" y="830" fill="#555" font-size="8">org_members | roles | permissions</text>
+  <text x="45" y="844" fill="#555" font-size="8">role_assignments | api_keys | oauth2_clients</text>
+  <text x="45" y="858" fill="#555" font-size="8">mfa_secrets | audit_events | invitations</text>
+
+  <!-- Redis -->
+  <rect x="300" y="764" width="250" height="100" rx="8" fill="white" stroke="#f44336" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="300" y="764" width="250" height="24" rx="8" fill="#f44336"/>
+  <text x="425" y="781" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Redis</text>
+  <text x="310" y="802" fill="#333" font-size="9">Keys:</text>
+  <text x="310" y="816" fill="#555" font-size="8">session:{id} — user sessions</text>
+  <text x="310" y="830" fill="#555" font-size="8">perms:{userId} — cached permissions</text>
+  <text x="310" y="844" fill="#555" font-size="8">lockout:{userId} — failed attempt count</text>
+  <text x="310" y="858" fill="#555" font-size="8">apikey:{hash} — cached key validation</text>
+
+  <!-- Spring Mail -->
+  <rect x="565" y="764" width="180" height="100" rx="8" fill="white" stroke="#4caf50" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="565" y="764" width="180" height="24" rx="8" fill="#4caf50"/>
+  <text x="655" y="781" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Spring Mail (SMTP)</text>
+  <text x="575" y="802" fill="#333" font-size="9">Sends:</text>
+  <text x="575" y="816" fill="#555" font-size="8">• Email verification</text>
+  <text x="575" y="830" fill="#555" font-size="8">• Password reset link</text>
+  <text x="575" y="844" fill="#555" font-size="8">• MFA OTP codes</text>
+  <text x="575" y="858" fill="#555" font-size="8">• Org invitations</text>
+
+  <!-- Kafka -->
+  <rect x="760" y="764" width="180" height="100" rx="8" fill="white" stroke="#ff9800" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="760" y="764" width="180" height="24" rx="8" fill="#ff9800"/>
+  <text x="850" y="781" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Kafka (Events)</text>
+  <text x="770" y="802" fill="#333" font-size="9">Publishes:</text>
+  <text x="770" y="816" fill="#555" font-size="8">• user.registered</text>
+  <text x="770" y="830" fill="#555" font-size="8">• user.role.changed</text>
+  <text x="770" y="844" fill="#555" font-size="8">• auth.login.success/fail</text>
+  <text x="770" y="858" fill="#555" font-size="8">• org.member.invited</text>
+
+  <!-- External IdPs -->
+  <rect x="955" y="764" width="310" height="100" rx="8" fill="white" stroke="#9c27b0" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="955" y="764" width="310" height="24" rx="8" fill="#9c27b0"/>
+  <text x="1110" y="781" text-anchor="middle" fill="white" font-size="10" font-weight="bold">External Identity Providers</text>
+  <text x="965" y="802" fill="#333" font-size="9">OAuth2 / OIDC:</text>
+  <text x="965" y="816" fill="#555" font-size="8">Google, GitHub, Azure AD, Okta, Custom OIDC</text>
+  <text x="965" y="834" fill="#333" font-size="9">SAML 2.0 SP:</text>
+  <text x="965" y="848" fill="#555" font-size="8">Corporate AD FS, Ping, Shibboleth</text>
+  <text x="965" y="864" fill="#333" font-size="9">LDAP/AD:</text>
+
+  <!-- LEGEND -->
+  <rect x="1040" y="75" width="240" height="95" rx="8" fill="white" stroke="#9e9e9e" stroke-width="1" filter="url(#shadow)"/>
+  <text x="1055" y="95" fill="#333" font-size="11" font-weight="bold">BUILD STATUS LEGEND</text>
+  <rect x="1055" y="103" width="12" height="12" fill="#00897b"/>
+  <text x="1073" y="114" fill="#333" font-size="9">[SPRING] — Built-in, out of the box</text>
+  <rect x="1055" y="120" width="12" height="12" fill="#ef6c00"/>
+  <text x="1073" y="131" fill="#333" font-size="9">[CUSTOM] — Must build from scratch</text>
+  <rect x="1055" y="137" width="12" height="12" fill="#7b1fa2"/>
+  <text x="1073" y="148" fill="#333" font-size="9">[CUSTOM + LIB] — Custom + helper library</text>
+  <rect x="1055" y="154" width="12" height="12" fill="#e91e63"/>
+  <text x="1073" y="165" fill="#333" font-size="9">[SPRING + CUSTOM] — Spring base + custom</text>
+
+  <!-- Version -->
+  <text x="1270" y="893" text-anchor="end" fill="#999" font-size="9">v2.0 | 2026-03-25</text>
+</svg>

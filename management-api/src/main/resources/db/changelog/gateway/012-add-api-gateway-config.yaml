@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-012-add-api-gateway-config
+      author: gateway-team
+      comment: "Per-API gateway configuration for load balancing, circuit breaker, caching, IP filtering, timeouts"
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: apis
+            columns:
+              - column:
+                  name: gateway_config
+                  type: jsonb
+                  defaultValue: '{}'
+                  remarks: >
+                    Per-API gateway configuration. JSON structure:
+                    {
+                      "loadBalancing": { "upstreamUrls": [], "algorithm": "round-robin", "healthCheck": { "enabled": true, "path": "/health", "intervalSeconds": 30 } },
+                      "circuitBreaker": { "enabled": true, "failureThreshold": 5, "resetTimeoutSeconds": 60 },
+                      "caching": { "enabled": false, "ttlSeconds": 300, "cacheableMethods": ["GET"], "cacheableStatuses": [200] },
+                      "rateLimitOverride": { "enabled": false, "requestsPerSecond": null, "requestsPerMinute": null, "requestsPerDay": null, "enforcement": "SOFT" },
+                      "ipFilter": { "whitelist": [], "blacklist": [] },
+                      "security": { "corsOrigins": [], "customHeaders": {} },
+                      "timeouts": { "connectTimeoutMs": 10000, "readTimeoutMs": 60000, "maxRequestBodyBytes": 10485760 }
+                    }
+      rollback:
+        - dropColumn:
+            schemaName: gateway
+            tableName: apis
+            columnName: gateway_config

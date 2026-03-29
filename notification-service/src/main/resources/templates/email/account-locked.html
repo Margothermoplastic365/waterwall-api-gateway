@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Account Locked</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #e74c3c;">Account Locked</h2>
+    <p>Hi <span th:text="${name}">User</span>,</p>
+    <p>Your account has been temporarily locked due to multiple failed login attempts.</p>
+    <p>For your security, your account will remain locked for <strong th:text="${lockDuration}">30 minutes</strong>.</p>
+    <p>If this was you, simply wait for the lock period to expire and try again with the correct credentials.</p>
+    <p>If you did not attempt to log in, your account may be under attack. We recommend:</p>
+    <ul>
+        <li>Resetting your password immediately once the lock expires</li>
+        <li>Enabling multi-factor authentication (MFA) if not already active</li>
+        <li>Reviewing your recent account activity</li>
+    </ul>
+    <p>If you need immediate assistance, please contact our support team.</p>
+    <p style="color: #666; font-size: 12px;">This is an automated message from the API Gateway Platform.</p>
+</body>
+</html>

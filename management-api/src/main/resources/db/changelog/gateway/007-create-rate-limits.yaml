@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-007-create-rate-limits
+      author: gateway-team
+      comment: "STRICT rate limiting — PostgreSQL atomic counters (Tier 2)"
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                schemaName: gateway
+                tableName: rate_limits
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE gateway.rate_limits (
+                id BIGSERIAL PRIMARY KEY,
+                "key" VARCHAR(500) NOT NULL,
+                window_start BIGINT NOT NULL,
+                "count" INT DEFAULT 0,
+                limit_value INT NOT NULL,
+                CONSTRAINT uq_ratelimit_key_window UNIQUE ("key", window_start)
+              );
+              CREATE INDEX idx_ratelimit_key ON gateway.rate_limits ("key");
+            splitStatements: true
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: rate_limits }

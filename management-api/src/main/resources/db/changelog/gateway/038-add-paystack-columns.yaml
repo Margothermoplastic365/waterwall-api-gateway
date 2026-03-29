@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-038-add-paystack-invoice-columns
+      author: system
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: invoices
+            columns:
+              - column:
+                  name: paystack_reference
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: payment_method_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: paid_at
+                  type: timestamptz
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: gw-038-add-paystack-payment-method-columns
+      author: system
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: payment_methods
+            columns:
+              - column:
+                  name: paystack_authorization_code
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: paystack_customer_code
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: card_last4
+                  type: varchar(4)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: card_brand
+                  type: varchar(50)
+                  constraints:
+                    nullable: true

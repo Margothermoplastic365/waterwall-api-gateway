@@ -1,0 +1,102 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-roles-permissions
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: varchar(500)
+              - column:
+                  name: scope_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_system
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+
+        - createTable:
+            schemaName: identity
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: resource
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(255)
+        - addUniqueConstraint:
+            schemaName: identity
+            tableName: permissions
+            columnNames: resource, action
+            constraintName: uq_permission
+
+        - createTable:
+            schemaName: identity
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_roleperm_role
+                    references: identity.roles(id)
+                    deleteCascade: true
+              - column:
+                  name: permission_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_roleperm_perm
+                    references: identity.permissions(id)
+                    deleteCascade: true
+        - addPrimaryKey:
+            schemaName: identity
+            tableName: role_permissions
+            columnNames: role_id, permission_id
+            constraintName: pk_role_permissions
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: role_permissions
+        - dropTable:
+            schemaName: identity
+            tableName: permissions
+        - dropTable:
+            schemaName: identity
+            tableName: roles

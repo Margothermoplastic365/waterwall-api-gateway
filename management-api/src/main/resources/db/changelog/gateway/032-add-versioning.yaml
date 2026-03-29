@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-032-add-versioning
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: apis
+            columns:
+              - column: { name: api_group_id, type: uuid }
+              - column: { name: api_group_name, type: varchar(255) }
+              - column: { name: sensitivity, type: varchar(10), defaultValue: 'LOW' }
+              - column: { name: version_status, type: varchar(20), defaultValue: 'ACTIVE' }
+              - column: { name: deprecated_message, type: text }
+              - column: { name: successor_version_id, type: uuid }
+        - createIndex:
+            schemaName: gateway
+            tableName: apis
+            indexName: idx_apis_group_id
+            columns:
+              - column: { name: api_group_id }
+        - sql:
+            sql: |
+              UPDATE gateway.apis SET api_group_id = id, api_group_name = name WHERE api_group_id IS NULL;
+      rollback:
+        - dropIndex: { schemaName: gateway, tableName: apis, indexName: idx_apis_group_id }
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: successor_version_id }
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: deprecated_message }
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: version_status }
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: sensitivity }
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: api_group_name }
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: api_group_id }

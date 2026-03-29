@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-022-create-ai-plans
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: ai_plans
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(100), constraints: { nullable: false, unique: true } }
+              - column: { name: description, type: text }
+              - column: { name: token_budget_daily, type: bigint }
+              - column: { name: token_budget_monthly, type: bigint }
+              - column: { name: allowed_models, type: jsonb }
+              - column: { name: allowed_tools, type: jsonb }
+              - column: { name: price_per_1k_tokens, type: "decimal(10,6)" }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

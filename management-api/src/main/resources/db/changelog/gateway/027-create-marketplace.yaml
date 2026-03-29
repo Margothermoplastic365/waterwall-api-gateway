@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-027-create-marketplace-plugins
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: marketplace_plugins
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: author, type: varchar(255) }
+              - column: { name: version, type: varchar(50) }
+              - column: { name: type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: download_url, type: varchar(1024) }
+              - column: { name: rating, type: "decimal(3,2)", defaultValueNumeric: 0 }
+              - column: { name: review_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: certified, type: boolean, defaultValueBoolean: false }
+              - column: { name: installed_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

@@ -1,0 +1,170 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-001-sample-apis-environments-plans
+      author: gateway-team
+      context: dev,uat
+      comment: "Seed sample APIs, environments, plans, routes, subscriptions, and policy attachments"
+      changes:
+        - sql:
+            sql: |
+              -- ============================================================
+              -- ENVIRONMENTS
+              -- ============================================================
+              INSERT INTO gateway.environments (id, name, slug, description, config, created_at)
+              VALUES
+                ('40000000-0000-0000-0000-000000000001', 'Development',  'dev',     'Development environment for testing',                  '{"baseUrl":"https://dev.gateway.local","debug":true}',  now()),
+                ('40000000-0000-0000-0000-000000000002', 'UAT',          'uat',     'User acceptance testing environment',                  '{"baseUrl":"https://uat.gateway.local","debug":false}', now()),
+                ('40000000-0000-0000-0000-000000000003', 'Staging',      'staging', 'Pre-production staging environment',                   '{"baseUrl":"https://staging.gateway.local","debug":false}', now()),
+                ('40000000-0000-0000-0000-000000000004', 'Production',   'prod',    'Live production environment',                          '{"baseUrl":"https://api.gateway.local","debug":false}', now())
+              ON CONFLICT (slug) DO NOTHING;
+
+              -- ============================================================
+              -- PLANS
+              -- ============================================================
+              INSERT INTO gateway.plans (id, name, description, rate_limits, quota, enforcement, status, created_at, updated_at)
+              VALUES
+                ('50000000-0000-0000-0000-000000000001', 'Free',       'Free tier with basic rate limits',                      '{"requestsPerMinute":60,"requestsPerDay":10000}',   '{"monthlyRequests":100000}',    'HARD',  'ACTIVE', now(), now()),
+                ('50000000-0000-0000-0000-000000000002', 'Starter',    'Starter plan for small projects and prototyping',       '{"requestsPerMinute":300,"requestsPerDay":100000}',  '{"monthlyRequests":1000000}',   'HARD',  'ACTIVE', now(), now()),
+                ('50000000-0000-0000-0000-000000000003', 'Pro',        'Professional plan for production workloads',            '{"requestsPerMinute":1000,"requestsPerDay":500000}', '{"monthlyRequests":10000000}',  'SOFT',  'ACTIVE', now(), now()),
+                ('50000000-0000-0000-0000-000000000004', 'Enterprise', 'Unlimited plan with SLA guarantees and priority support','{"requestsPerMinute":5000,"requestsPerDay":null}',  '{"monthlyRequests":null}',      'NONE',  'ACTIVE', now(), now())
+              ON CONFLICT (name) DO NOTHING;
+
+              -- ============================================================
+              -- APIs
+              -- ============================================================
+              INSERT INTO gateway.apis (id, name, version, description, status, visibility, protocol_type, tags, category, org_id, auth_mode, allow_anonymous, created_by, created_at, updated_at)
+              VALUES
+                ('60000000-0000-0000-0000-000000000001', 'Payment Processing API',  'v2.1.0', 'Process credit card payments, refunds, and chargebacks',          'PUBLISHED',   'PUBLIC',     'REST', '["payments","fintech","transactions"]',    'Finance',       '10000000-0000-0000-0000-000000000001', 'REQUIRED', false, '20000000-0000-0000-0000-000000000001', now(), now()),
+                ('60000000-0000-0000-0000-000000000002', 'Shipment Tracking API',   'v1.3.0', 'Real-time shipment tracking with webhooks for status updates',    'PUBLISHED',   'PUBLIC',     'REST', '["logistics","tracking","shipping"]',     'Logistics',     '10000000-0000-0000-0000-000000000002', 'REQUIRED', false, '20000000-0000-0000-0000-000000000003', now(), now()),
+                ('60000000-0000-0000-0000-000000000003', 'Data Transform API',      'v1.0.0', 'Transform data between formats: CSV, JSON, XML, Parquet',         'PUBLISHED',   'RESTRICTED', 'REST', '["data","etl","transformation"]',         'Data',          '10000000-0000-0000-0000-000000000003', 'REQUIRED', false, '20000000-0000-0000-0000-000000000005', now(), now()),
+                ('60000000-0000-0000-0000-000000000004', 'Weather Forecast API',    'v3.0.0', 'Global weather data and forecasts powered by satellite imagery',  'PUBLISHED',   'PUBLIC',     'REST', '["weather","forecast","geospatial"]',     'Weather',       '10000000-0000-0000-0000-000000000001', 'ANY',      true,  '20000000-0000-0000-0000-000000000001', now(), now()),
+                ('60000000-0000-0000-0000-000000000005', 'User Analytics API',      'v1.2.0', 'Aggregate user behavior analytics and funnel analysis',           'PUBLISHED',   'PRIVATE',    'REST', '["analytics","users","metrics"]',         'Analytics',     '10000000-0000-0000-0000-000000000002', 'REQUIRED', false, '20000000-0000-0000-0000-000000000003', now(), now()),
+                ('60000000-0000-0000-0000-000000000006', 'Notification Hub API',    'v2.0.0', 'Multi-channel notifications: email, SMS, push, and webhooks',     'DRAFT',       'PUBLIC',     'REST', '["notifications","messaging","alerts"]',  'Communication', '10000000-0000-0000-0000-000000000001', 'REQUIRED', false, '20000000-0000-0000-0000-000000000002', now(), now()),
+                ('60000000-0000-0000-0000-000000000007', 'Legacy Order API',        'v1.0.0', 'Deprecated order management system — migrate to Payment API v2',  'DEPRECATED',  'PUBLIC',     'REST', '["orders","legacy"]',                     'Finance',       '10000000-0000-0000-0000-000000000001', 'REQUIRED', false, '20000000-0000-0000-0000-000000000001', now(), now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- ROUTES
+              -- ============================================================
+              -- Payment API routes
+              INSERT INTO gateway.routes (id, api_id, path, method, upstream_url, auth_types, priority, strip_prefix, enabled, created_at)
+              VALUES
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', '/v2/payments',          'POST',   'http://payment-service:8090/payments',         '["API_KEY","OAUTH2"]', 10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', '/v2/payments/{id}',     'GET',    'http://payment-service:8090/payments/{id}',    '["API_KEY","OAUTH2"]', 10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', '/v2/payments/{id}/refund', 'POST','http://payment-service:8090/payments/{id}/refund', '["OAUTH2"]',       10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', '/v2/payments',          'GET',    'http://payment-service:8090/payments',         '["API_KEY","OAUTH2"]', 10, true, true, now()),
+
+              -- Shipment Tracking API routes
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', '/v1/shipments',         'POST',   'http://shipping-service:8091/shipments',       '["API_KEY"]',          10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', '/v1/shipments/{id}',    'GET',    'http://shipping-service:8091/shipments/{id}',  '["API_KEY"]',          10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', '/v1/shipments/{id}/track', 'GET', 'http://shipping-service:8091/shipments/{id}/track', '["API_KEY"]',     10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', '/v1/webhooks',          'POST',   'http://shipping-service:8091/webhooks',        '["API_KEY","OAUTH2"]', 10, true, true, now()),
+
+              -- Data Transform API routes
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000003', '/v1/transform',         'POST',   'http://transform-service:8092/transform',     '["API_KEY"]',          10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000003', '/v1/transform/batch',   'POST',   'http://transform-service:8092/transform/batch','["API_KEY","OAUTH2"]', 10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000003', '/v1/schemas',           'GET',    'http://transform-service:8092/schemas',       '["API_KEY"]',          10, true, true, now()),
+
+              -- Weather API routes
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', '/v3/weather/current',   'GET',    'http://weather-service:8093/current',         '["API_KEY"]',          10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', '/v3/weather/forecast',  'GET',    'http://weather-service:8093/forecast',        '["API_KEY"]',          10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', '/v3/weather/historical','GET',    'http://weather-service:8093/historical',      '["API_KEY"]',          10, true, true, now()),
+
+              -- User Analytics API routes
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000005', '/v1/analytics/events',  'POST',   'http://analytics-backend:8094/events',        '["API_KEY","OAUTH2"]', 10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000005', '/v1/analytics/funnels', 'GET',    'http://analytics-backend:8094/funnels',       '["OAUTH2"]',           10, true, true, now()),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000005', '/v1/analytics/reports', 'GET',    'http://analytics-backend:8094/reports',       '["OAUTH2"]',           10, true, true, now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- SUBSCRIPTIONS (apps subscribed to APIs via plans)
+              -- ============================================================
+              INSERT INTO gateway.subscriptions (id, application_id, api_id, plan_id, status, approved_at, created_at)
+              VALUES
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000004', 'ACTIVE',   now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000002', 'ACTIVE',   now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000003', 'ACTIVE',   now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000003', 'ACTIVE',   now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000003', 'ACTIVE',   now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000001', 'ACTIVE',   now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'PENDING',  now(), now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000004', 'ACTIVE',   now(), now())
+              ON CONFLICT (application_id, api_id) DO NOTHING;
+
+              -- ============================================================
+              -- API DEPLOYMENTS
+              -- ============================================================
+              INSERT INTO gateway.api_deployments (id, api_id, environment_slug, status, deployed_by, deployed_at)
+              VALUES
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '30 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'uat',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '20 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'staging', 'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '10 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '5 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000003', now() - interval '15 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000003', now() - interval '7 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000003', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000005', now() - interval '10 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '25 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '12 days'),
+                (gen_random_uuid(), '60000000-0000-0000-0000-000000000006', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000002', now() - interval '3 days')
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- POLICY ATTACHMENTS (attach seeded policies to APIs)
+              -- ============================================================
+              INSERT INTO gateway.policy_attachments (id, policy_id, api_id, route_id, scope, priority)
+              SELECT gen_random_uuid(), p.id, '60000000-0000-0000-0000-000000000001', NULL, 'API', 1
+              FROM gateway.policies p WHERE p.name = 'Standard Rate Limit'
+              ON CONFLICT DO NOTHING;
+
+              INSERT INTO gateway.policy_attachments (id, policy_id, api_id, route_id, scope, priority)
+              SELECT gen_random_uuid(), p.id, '60000000-0000-0000-0000-000000000002', NULL, 'API', 1
+              FROM gateway.policies p WHERE p.name = 'Standard Rate Limit'
+              ON CONFLICT DO NOTHING;
+
+              INSERT INTO gateway.policy_attachments (id, policy_id, api_id, route_id, scope, priority)
+              SELECT gen_random_uuid(), p.id, '60000000-0000-0000-0000-000000000003', NULL, 'API', 1
+              FROM gateway.policies p WHERE p.name = 'Strict Rate Limit'
+              ON CONFLICT DO NOTHING;
+
+              INSERT INTO gateway.policy_attachments (id, policy_id, api_id, route_id, scope, priority)
+              SELECT gen_random_uuid(), p.id, '60000000-0000-0000-0000-000000000004', NULL, 'API', 1
+              FROM gateway.policies p WHERE p.name = 'Public CORS'
+              ON CONFLICT DO NOTHING;
+
+              INSERT INTO gateway.policy_attachments (id, policy_id, api_id, route_id, scope, priority)
+              SELECT gen_random_uuid(), p.id, '60000000-0000-0000-0000-000000000004', NULL, 'API', 2
+              FROM gateway.policies p WHERE p.name = 'Response Cache 5m'
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- GATEWAY NODES
+              -- ============================================================
+              INSERT INTO gateway.gateway_nodes (id, hostname, ip_address, port, config_version, status, last_heartbeat, registered_at)
+              VALUES
+                (gen_random_uuid(), 'gw-node-01.gateway.local', '10.0.1.10', 8080, 42, 'UP',       now() - interval '30 seconds', now() - interval '90 days'),
+                (gen_random_uuid(), 'gw-node-02.gateway.local', '10.0.1.11', 8080, 42, 'UP',       now() - interval '15 seconds', now() - interval '90 days'),
+                (gen_random_uuid(), 'gw-node-03.gateway.local', '10.0.1.12', 8080, 41, 'DEGRADED', now() - interval '5 minutes',  now() - interval '60 days')
+              ON CONFLICT (hostname) DO NOTHING;
+
+              -- ============================================================
+              -- REGIONS
+              -- ============================================================
+              INSERT INTO gateway.regions (id, name, slug, endpoint_url, data_residency_zone, status, created_at)
+              VALUES
+                (gen_random_uuid(), 'US East',       'us-east-1',  'https://us-east-1.api.gateway.local',  'US',    'OPERATIONAL', now()),
+                (gen_random_uuid(), 'EU West',       'eu-west-1',  'https://eu-west-1.api.gateway.local',  'EU',    'OPERATIONAL', now()),
+                (gen_random_uuid(), 'Asia Pacific',  'ap-south-1', 'https://ap-south-1.api.gateway.local', 'APAC',  'OPERATIONAL', now())
+              ON CONFLICT (slug) DO NOTHING;
+
+      rollback:
+        - sql:
+            sql: |
+              DELETE FROM gateway.policy_attachments WHERE api_id LIKE '60000000%';
+              DELETE FROM gateway.api_deployments WHERE api_id LIKE '60000000%';
+              DELETE FROM gateway.subscriptions WHERE api_id LIKE '60000000%';
+              DELETE FROM gateway.routes WHERE api_id LIKE '60000000%';
+              DELETE FROM gateway.apis WHERE id LIKE '60000000%';
+              DELETE FROM gateway.plans WHERE id LIKE '50000000%';
+              DELETE FROM gateway.environments WHERE id LIKE '40000000%';
+              DELETE FROM gateway.gateway_nodes WHERE hostname LIKE 'gw-node%';
+              DELETE FROM gateway.regions WHERE slug IN ('us-east-1','eu-west-1','ap-south-1');

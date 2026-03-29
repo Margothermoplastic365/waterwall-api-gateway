@@ -1,0 +1,23 @@
+@echo off
+echo ============================================
+echo   API Gateway Platform - Stopping All Services
+echo ============================================
+
+echo Stopping Identity Service...
+taskkill /FI "WINDOWTITLE eq Identity*" /F 2>nul
+echo Stopping Management API...
+taskkill /FI "WINDOWTITLE eq Management*" /F 2>nul
+echo Stopping Gateway Runtime...
+taskkill /FI "WINDOWTITLE eq Gateway*" /F 2>nul
+echo Stopping Analytics Service...
+taskkill /FI "WINDOWTITLE eq Analytics*" /F 2>nul
+echo Stopping Notification Service...
+taskkill /FI "WINDOWTITLE eq Notification*" /F 2>nul
+echo Stopping Portal...
+taskkill /FI "WINDOWTITLE eq Portal*" /F 2>nul
+echo Stopping Admin...
+taskkill /FI "WINDOWTITLE eq Admin*" /F 2>nul
+
+echo.
+echo All services stopped.
+pause

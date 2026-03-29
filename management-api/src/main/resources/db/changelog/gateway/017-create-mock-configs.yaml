@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-017-create-mock-configs
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: mock_configs
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_mock_configs_api, references: gateway.apis(id) } }
+              - column: { name: path, type: varchar(500) }
+              - column: { name: method, type: varchar(10) }
+              - column: { name: status_code, type: int, defaultValueNumeric: 200 }
+              - column: { name: response_body, type: text }
+              - column: { name: response_headers, type: jsonb }
+              - column: { name: latency_ms, type: int, defaultValueNumeric: 0 }
+              - column: { name: error_rate_percent, type: int, defaultValueNumeric: 0 }
+              - column: { name: mock_enabled, type: boolean, defaultValueBoolean: false }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+        - createIndex: { schemaName: gateway, tableName: mock_configs, indexName: idx_mock_configs_api_id, columns: [{ column: { name: api_id } }] }
+        - createIndex: { schemaName: gateway, tableName: mock_configs, indexName: idx_mock_configs_api_path_method, columns: [{ column: { name: api_id } }, { column: { name: path } }, { column: { name: method } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: mock_configs }

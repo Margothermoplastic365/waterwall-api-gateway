@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: an-008-create-sla-tables
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: analytics
+            tableName: sla_configs
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: api_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: uptime_target, type: "decimal(5,2)" }
+              - column: { name: latency_target_ms, type: int }
+              - column: { name: error_budget_pct, type: "decimal(5,2)" }
+              - column: { name: enabled, type: boolean, defaultValueBoolean: true }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+        - createTable:
+            schemaName: analytics
+            tableName: sla_breaches
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: sla_config_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_sla_breach_config, references: "analytics.sla_configs(id)" } }
+              - column: { name: metric, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: target_value, type: decimal }
+              - column: { name: actual_value, type: decimal }
+              - column: { name: message, type: text }
+              - column: { name: breached_at, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: resolved_at, type: timestamptz }
+        - createIndex:
+            schemaName: analytics
+            tableName: sla_configs
+            indexName: idx_sla_configs_api_id
+            columns:
+              - column: { name: api_id }
+        - createIndex:
+            schemaName: analytics
+            tableName: sla_breaches
+            indexName: idx_sla_breaches_api_id_breached_at
+            columns:
+              - column: { name: api_id }
+              - column: { name: breached_at, descending: true }
+        - createIndex:
+            schemaName: analytics
+            tableName: sla_breaches
+            indexName: idx_sla_breaches_config_metric_resolved
+            columns:
+              - column: { name: sla_config_id }
+              - column: { name: metric }
+              - column: { name: resolved_at }
+      rollback:
+        - dropTable: { schemaName: analytics, tableName: sla_breaches }
+        - dropTable: { schemaName: analytics, tableName: sla_configs }

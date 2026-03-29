@@ -1,0 +1,151 @@
+databaseChangeLog:
+  - changeSet:
+      id: 041-add-pricing-columns-to-plans
+      author: gateway-admin
+      comment: >
+        Merge pricing_plans columns into the existing plans table so that
+        subscriptions (which reference plans.id) carry pricing data directly.
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column:
+                  name: pricing_model
+                  type: varchar(50)
+                  defaultValue: 'FREE'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: price_amount
+                  type: decimal(12,2)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: currency
+                  type: varchar(10)
+                  defaultValue: 'USD'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: billing_period
+                  type: varchar(50)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: included_requests
+                  type: bigint
+                  constraints:
+                    nullable: true
+              - column:
+                  name: overage_rate
+                  type: decimal(10,6)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 041-seed-pricing-data-free
+      author: gateway-admin
+      comment: Seed pricing data for the Free plan
+      changes:
+        - update:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column:
+                  name: pricing_model
+                  value: 'FREE'
+              - column:
+                  name: price_amount
+                  valueNumeric: 0
+              - column:
+                  name: currency
+                  value: 'USD'
+              - column:
+                  name: billing_period
+                  value: 'MONTHLY'
+              - column:
+                  name: included_requests
+                  valueNumeric: 100000
+            where: name = 'Free'
+
+  - changeSet:
+      id: 041-seed-pricing-data-starter
+      author: gateway-admin
+      comment: Seed pricing data for the Starter plan
+      changes:
+        - update:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column:
+                  name: pricing_model
+                  value: 'TIERED'
+              - column:
+                  name: price_amount
+                  valueNumeric: 29.99
+              - column:
+                  name: currency
+                  value: 'USD'
+              - column:
+                  name: billing_period
+                  value: 'MONTHLY'
+              - column:
+                  name: included_requests
+                  valueNumeric: 1000000
+              - column:
+                  name: overage_rate
+                  valueNumeric: 0.0001
+            where: name = 'Starter'
+
+  - changeSet:
+      id: 041-seed-pricing-data-pro
+      author: gateway-admin
+      comment: Seed pricing data for the Pro plan
+      changes:
+        - update:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column:
+                  name: pricing_model
+                  value: 'TIERED'
+              - column:
+                  name: price_amount
+                  valueNumeric: 99.99
+              - column:
+                  name: currency
+                  value: 'USD'
+              - column:
+                  name: billing_period
+                  value: 'MONTHLY'
+              - column:
+                  name: included_requests
+                  valueNumeric: 10000000
+              - column:
+                  name: overage_rate
+                  valueNumeric: 0.00005
+            where: name = 'Pro'
+
+  - changeSet:
+      id: 041-seed-pricing-data-enterprise
+      author: gateway-admin
+      comment: Seed pricing data for the Enterprise plan
+      changes:
+        - update:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column:
+                  name: pricing_model
+                  value: 'FLAT_RATE'
+              - column:
+                  name: price_amount
+                  valueNumeric: 499.99
+              - column:
+                  name: currency
+                  value: 'USD'
+              - column:
+                  name: billing_period
+                  value: 'MONTHLY'
+            where: name = 'Enterprise'

@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-add-policy-version
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column:
+                  name: version
+                  type: INT
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false

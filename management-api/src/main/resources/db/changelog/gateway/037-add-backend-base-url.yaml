@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-037-add-backend-base-url
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: apis
+            columns:
+              - column: { name: backend_base_url, type: varchar(1024) }
+      rollback:
+        - dropColumn: { schemaName: gateway, tableName: apis, columnName: backend_base_url }

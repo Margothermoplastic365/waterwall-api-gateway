@@ -1,0 +1,25 @@
+[Unit]
+Description=API Gateway Identity Service
+After=network.target postgresql.service rabbitmq-server.service
+Requires=postgresql.service rabbitmq-server.service
+
+[Service]
+Type=simple
+User=gateway
+Group=gateway
+WorkingDirectory=/opt/gateway
+ExecStart=/usr/bin/java -jar \
+    -Xms256m -Xmx512m \
+    -Dspring.profiles.active=${GATEWAY_ENV} \
+    -Dspring.config.additional-location=/opt/gateway/config/identity-service/ \
+    /opt/gateway/bin/identity-service.jar
+EnvironmentFile=/etc/gateway/.env
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65535
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/analytics/001-create-request-logs.yaml
+  - include:
+      file: db/changelog/analytics/002-create-metrics-tables.yaml
+  - include:
+      file: db/changelog/analytics/003-create-alerts.yaml
+  - include:
+      file: db/changelog/analytics/004-create-audit-events-all.yaml
+  - include:
+      file: db/changelog/analytics/005-create-semantic-cache.yaml
+  - include:
+      file: db/changelog/analytics/006-add-mock-mode-column.yaml
+  - include:
+      file: db/changelog/analytics/008-create-sla-tables.yaml
+  - include:
+      file: db/changelog/analytics/seed-001-sample-data.yaml

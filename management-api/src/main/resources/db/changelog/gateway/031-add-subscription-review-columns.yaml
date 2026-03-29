@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-031-add-subscription-review-columns
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: subscriptions
+            columns:
+              - column: { name: reason, type: varchar(500) }
+              - column: { name: reviewed_by, type: uuid }
+              - column: { name: reviewed_at, type: timestamptz }
+      rollback:
+        - dropColumn: { schemaName: gateway, tableName: subscriptions, columnName: reason }
+        - dropColumn: { schemaName: gateway, tableName: subscriptions, columnName: reviewed_by }
+        - dropColumn: { schemaName: gateway, tableName: subscriptions, columnName: reviewed_at }

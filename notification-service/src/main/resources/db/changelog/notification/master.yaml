@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/notification/001-create-notifications.yaml
+  - include:
+      file: db/changelog/notification/002-create-webhook-endpoints.yaml
+  - include:
+      file: db/changelog/notification/003-create-notification-preferences.yaml
+  - include:
+      file: db/changelog/notification/004-create-webhook-delivery-log.yaml
+  - include:
+      file: db/changelog/notification/seed-001-sample-data.yaml

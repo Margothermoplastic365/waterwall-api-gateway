@@ -1,0 +1,145 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: identity-service
+  threads:
+    virtual:
+      enabled: true
+  profiles:
+    active: ${GATEWAY_ENV:dev}
+
+  # Database
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gateway}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+      schema: identity
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: identity
+        format_sql: false
+    open-in-view: false
+
+  # Thymeleaf
+  thymeleaf:
+    check-template-location: false
+
+  # Liquibase
+  liquibase:
+    change-log: classpath:/db/changelog/identity/master.yaml
+    default-schema: identity
+    liquibase-schema: identity
+
+  # Session
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/cem}
+
+  # Mail
+  mail:
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.from: ${MAIL_FROM:noreply@example.com}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    rabbit:
+      enabled: true
+
+# Application config
+gateway:
+  identity:
+    jwt:
+      issuer-uri: ${JWT_ISSUER_URI:http://localhost:8081}
+      key-store-path: ${JWT_KEYSTORE_PATH:classpath:keys/gateway-jwt.jks}
+      key-store-password: ${JWT_KEYSTORE_PASSWORD:changeit}
+      key-alias: ${JWT_KEY_ALIAS:gateway-jwt}
+    password-policy:
+      min-length: 8
+      max-length: 128
+      require-uppercase: true
+      require-lowercase: true
+      require-digit: true
+      require-special: true
+      history-count: 5
+      max-age-days: 90
+    lockout:
+      max-attempts: 5
+      lock-duration-minutes: 30
+    session:
+      max-concurrent: 3
+      idle-timeout-minutes: 30
+      absolute-timeout-hours: 8
+    oauth2:
+      default-client-id: ${OAUTH2_CLIENT_ID:gateway-portal}
+      default-client-secret: ${OAUTH2_CLIENT_SECRET}
+      default-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/api/auth/callback}
+      access-token-ttl-hours: ${OAUTH2_ACCESS_TOKEN_TTL_HOURS:1}
+      refresh-token-ttl-days: ${OAUTH2_REFRESH_TOKEN_TTL_DAYS:30}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,X-API-Key,X-Trace-Id}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+  apikey:
+    prefix: ${APIKEY_PREFIX:live}
+    rotation-grace-hours: ${APIKEY_ROTATION_GRACE_HOURS:168}
+    social:
+      enabled: ${SOCIAL_LOGIN_ENABLED:false}
+      google:
+        client-id: ${GOOGLE_CLIENT_ID:}
+        client-secret: ${GOOGLE_CLIENT_SECRET:}
+      github:
+        client-id: ${GITHUB_CLIENT_ID:}
+        client-secret: ${GITHUB_CLIENT_SECRET:}
+      azure:
+        client-id: ${AZURE_CLIENT_ID:}
+        client-secret: ${AZURE_CLIENT_SECRET:}
+        tenant-id: ${AZURE_TENANT_ID:common}

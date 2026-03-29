@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-create-invitations
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: invitations
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: org_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_invite_org
+                    references: identity.organizations(id)
+              - column:
+                  name: role_id
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_invite_role
+                    references: identity.roles(id)
+              - column:
+                  name: token
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: PENDING
+              - column:
+                  name: invited_by
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_invite_by
+                    references: identity.users(id)
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: invitations

@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "httpbin API",
+    "description": "A simple HTTP Request & Response testing service at httpbin.org — tests any HTTP method, headers, auth, etc.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://httpbin.org" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": { "type": "http", "scheme": "basic" },
+      "bearerAuth": { "type": "http", "scheme": "bearer" }
+    }
+  },
+  "paths": {
+    "/get": {
+      "get": { "summary": "Returns GET data — echoes query params and headers", "responses": { "200": { "description": "Request data" } } }
+    },
+    "/post": {
+      "post": { "summary": "Returns POST data — echoes body and headers", "responses": { "200": { "description": "Request data" } } }
+    },
+    "/put": {
+      "put": { "summary": "Returns PUT data", "responses": { "200": { "description": "Request data" } } }
+    },
+    "/delete": {
+      "delete": { "summary": "Returns DELETE data", "responses": { "200": { "description": "Request data" } } }
+    },
+    "/status/{code}": {
+      "get": {
+        "summary": "Returns given HTTP status code",
+        "parameters": [ { "name": "code", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "Status code returned" } }
+      }
+    },
+    "/headers": {
+      "get": { "summary": "Returns request headers", "responses": { "200": { "description": "Headers" } } }
+    },
+    "/ip": {
+      "get": { "summary": "Returns origin IP", "responses": { "200": { "description": "IP address" } } }
+    },
+    "/user-agent": {
+      "get": { "summary": "Returns user agent string", "responses": { "200": { "description": "User agent" } } }
+    },
+    "/basic-auth/{user}/{passwd}": {
+      "get": {
+        "summary": "Test HTTP Basic Auth",
+        "security": [{ "basicAuth": [] }],
+        "parameters": [
+          { "name": "user", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "passwd", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Authenticated" }, "401": { "description": "Unauthorized" } }
+      }
+    },
+    "/bearer": {
+      "get": {
+        "summary": "Test Bearer Auth",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Authenticated" }, "401": { "description": "Unauthorized" } }
+      }
+    },
+    "/delay/{seconds}": {
+      "get": {
+        "summary": "Delays response by n seconds (max 10)",
+        "parameters": [ { "name": "seconds", "in": "path", "required": true, "schema": { "type": "integer", "maximum": 10 } } ],
+        "responses": { "200": { "description": "Delayed response" } }
+      }
+    },
+    "/json": {
+      "get": { "summary": "Returns a sample JSON response", "responses": { "200": { "description": "JSON data" } } }
+    }
+  }
+}

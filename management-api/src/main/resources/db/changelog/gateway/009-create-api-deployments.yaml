@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-009-create-api-deployments
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: api_deployments
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_deploy_api, references: gateway.apis(id) } }
+              - column: { name: environment_slug, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(30), defaultValue: DEPLOYED }
+              - column: { name: config_snapshot, type: jsonb }
+              - column: { name: deployed_by, type: uuid }
+              - column: { name: deployed_at, type: timestamptz, defaultValueComputed: now() }
+        - createIndex: { schemaName: gateway, tableName: api_deployments, indexName: idx_deploy_api, columns: [{ column: { name: api_id } }] }
+        - createIndex: { schemaName: gateway, tableName: api_deployments, indexName: idx_deploy_env, columns: [{ column: { name: environment_slug } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: api_deployments }

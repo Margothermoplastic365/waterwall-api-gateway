@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-create-revocation-list
+      author: gateway-team
+      comment: "Tier 2 cache — security-critical revocations checked on every gateway request"
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: revocation_list
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: revocation_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: credential_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: varchar(100)
+              - column:
+                  name: revoked_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_by
+                  type: uuid
+        - createIndex:
+            schemaName: identity
+            tableName: revocation_list
+            indexName: idx_revocation_lookup
+            columns:
+              - column:
+                  name: revocation_type
+              - column:
+                  name: credential_id
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: revocation_list

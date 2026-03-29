@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-add-auth-policy-columns
+      author: gateway-platform
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: apis
+            columns:
+              - column:
+                  name: auth_mode
+                  type: VARCHAR(10)
+                  defaultValue: 'ANY'
+                  constraints:
+                    nullable: true
+              - column:
+                  name: allow_anonymous
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+        - addColumn:
+            schemaName: gateway
+            tableName: routes
+            columns:
+              - column:
+                  name: require_mfa
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true

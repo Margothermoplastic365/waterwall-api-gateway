@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-020-create-gateway-nodes
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: gateway_nodes
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: hostname, type: varchar(255), constraints: { nullable: false, unique: true } }
+              - column: { name: ip_address, type: varchar(45) }
+              - column: { name: port, type: int }
+              - column: { name: config_version, type: bigint, defaultValueNumeric: 0 }
+              - column: { name: status, type: varchar(30), defaultValue: "UP" }
+              - column: { name: last_heartbeat, type: timestamptz }
+              - column: { name: registered_at, type: timestamptz, defaultValueComputed: now() }

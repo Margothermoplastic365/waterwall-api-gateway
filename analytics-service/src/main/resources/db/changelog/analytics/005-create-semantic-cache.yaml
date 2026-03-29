@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: analytics-005-create-semantic-cache
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: analytics
+            tableName: semantic_cache
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: prompt_hash, type: varchar(64), constraints: { nullable: false, unique: true } }
+              - column: { name: prompt_text, type: text }
+              - column: { name: response_json, type: text, constraints: { nullable: false } }
+              - column: { name: model, type: varchar(100) }
+              - column: { name: provider, type: varchar(50) }
+              - column: { name: hit_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: last_hit_at, type: timestamptz }
+        - createIndex:
+            schemaName: analytics
+            tableName: semantic_cache
+            indexName: idx_semantic_cache_prompt_hash
+            columns:
+              - column: { name: prompt_hash }

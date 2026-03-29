@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-webhook-endpoints
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: notification
+            tableName: webhook_endpoints
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: url
+                  type: varchar(2048)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: secret
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            schemaName: notification
+            tableName: webhook_endpoints
+            indexName: idx_webhook_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            schemaName: notification
+            tableName: webhook_endpoints
+            indexName: idx_webhook_user_active
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: active
+      rollback:
+        - dropTable:
+            schemaName: notification
+            tableName: webhook_endpoints

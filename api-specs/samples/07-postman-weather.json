@@ -1,0 +1,143 @@
+{
+  "info": {
+    "name": "Weather Service Collection",
+    "description": "Postman collection for the Weather API — forecasts, current conditions, and alerts",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-API-Key" },
+      { "key": "value", "value": "{{api_key}}" },
+      { "key": "in", "value": "header" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://weather.example.com/api/v3" },
+    { "key": "api_key", "value": "your-api-key-here" }
+  ],
+  "item": [
+    {
+      "name": "Current Weather",
+      "item": [
+        {
+          "name": "Get current weather by city",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weather/current?city=London&units=metric",
+              "host": ["{{base_url}}"],
+              "path": ["weather", "current"],
+              "query": [
+                { "key": "city", "value": "London" },
+                { "key": "units", "value": "metric" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get current weather by coordinates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weather/current?lat=51.5074&lon=-0.1278",
+              "host": ["{{base_url}}"],
+              "path": ["weather", "current"],
+              "query": [
+                { "key": "lat", "value": "51.5074" },
+                { "key": "lon", "value": "-0.1278" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forecasts",
+      "item": [
+        {
+          "name": "Get 5-day forecast",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weather/forecast?city=Tokyo&days=5",
+              "host": ["{{base_url}}"],
+              "path": ["weather", "forecast"],
+              "query": [
+                { "key": "city", "value": "Tokyo" },
+                { "key": "days", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get hourly forecast",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weather/forecast/hourly?city=Paris&hours=24",
+              "host": ["{{base_url}}"],
+              "path": ["weather", "forecast", "hourly"],
+              "query": [
+                { "key": "city", "value": "Paris" },
+                { "key": "hours", "value": "24" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "Get weather alerts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weather/alerts?country=US",
+              "host": ["{{base_url}}"],
+              "path": ["weather", "alerts"],
+              "query": [
+                { "key": "country", "value": "US" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Subscribe to alerts",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/weather/alerts/subscribe",
+              "host": ["{{base_url}}"],
+              "path": ["weather", "alerts", "subscribe"]
+            },
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"city\":\"New York\",\"webhookUrl\":\"https://myapp.com/webhook\",\"severity\":[\"warning\",\"severe\"]}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Historical Data",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/weather/historical?city=Berlin&date=2026-01-15",
+          "host": ["{{base_url}}"],
+          "path": ["weather", "historical"],
+          "query": [
+            { "key": "city", "value": "Berlin" },
+            { "key": "date", "value": "2026-01-15" }
+          ]
+        }
+      }
+    }
+  ]
+}

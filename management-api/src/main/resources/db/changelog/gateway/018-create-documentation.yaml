@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-018-create-documentation-pages
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: documentation_pages
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_doc_pages_api, references: gateway.apis(id) } }
+              - column: { name: title, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: content, type: text }
+              - column: { name: doc_type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: version, type: varchar(50) }
+              - column: { name: sort_order, type: int, defaultValueNumeric: 0 }
+              - column: { name: feedback_up, type: int, defaultValueNumeric: 0 }
+              - column: { name: feedback_down, type: int, defaultValueNumeric: 0 }
+              - column: { name: search_vector, type: tsvector }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-018-add-doc-search-index
+      author: gateway-team
+      changes:
+        - sql:
+            sql: >
+              CREATE INDEX idx_doc_pages_search_vector ON gateway.documentation_pages
+              USING GIN (search_vector);
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION gateway.doc_pages_search_vector_update()
+              RETURNS trigger AS $$
+              BEGIN
+                NEW.search_vector := to_tsvector('english', coalesce(NEW.title, '') || ' ' || coalesce(NEW.content, ''));
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+        - sql:
+            sql: >
+              CREATE TRIGGER trg_doc_pages_search_vector
+              BEFORE INSERT OR UPDATE ON gateway.documentation_pages
+              FOR EACH ROW EXECUTE FUNCTION gateway.doc_pages_search_vector_update();
+
+  - changeSet:
+      id: gw-018-add-doc-pages-indexes
+      author: gateway-team
+      changes:
+        - createIndex:
+            schemaName: gateway
+            tableName: documentation_pages
+            indexName: idx_doc_pages_api_id
+            columns:
+              - column: { name: api_id }
+        - createIndex:
+            schemaName: gateway
+            tableName: documentation_pages
+            indexName: idx_doc_pages_api_version
+            columns:
+              - column: { name: api_id }
+              - column: { name: version }

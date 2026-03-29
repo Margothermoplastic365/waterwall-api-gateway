@@ -1,0 +1,91 @@
+server:
+  port: 8084
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: notification-service
+  threads:
+    virtual:
+      enabled: true
+  profiles:
+    active: ${GATEWAY_ENV:dev}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gateway}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: notification
+
+  liquibase:
+    change-log: classpath:db/changelog/notification/master.yaml
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/cem}
+
+  mail:
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.from: ${MAIL_FROM:noreply@example.com}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+# ── Multi-channel notification routing ────────────────────────────────
+gateway:
+  notifications:
+    channels:
+      slack:
+        enabled: false
+        webhook-url: ${SLACK_WEBHOOK_URL:}
+      teams:
+        enabled: false
+        webhook-url: ${TEAMS_WEBHOOK_URL:}
+      webhook:
+        enabled: false
+        url: ${WEBHOOK_NOTIFICATION_URL:}
+        secret: ${WEBHOOK_NOTIFICATION_SECRET:}
+        max-retries: 3
+        headers: {}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true

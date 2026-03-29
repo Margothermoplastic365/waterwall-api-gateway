@@ -1,0 +1,24 @@
+[Unit]
+Description=API Gateway Management API
+After=network.target postgresql.service rabbitmq-server.service identity-service.service
+
+[Service]
+Type=simple
+User=gateway
+Group=gateway
+WorkingDirectory=/opt/gateway
+ExecStart=/usr/bin/java -jar \
+    -Xms256m -Xmx512m \
+    -Dspring.profiles.active=${GATEWAY_ENV} \
+    -Dspring.config.additional-location=/opt/gateway/config/management-api/ \
+    /opt/gateway/bin/management-api.jar
+EnvironmentFile=/etc/gateway/.env
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65535
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

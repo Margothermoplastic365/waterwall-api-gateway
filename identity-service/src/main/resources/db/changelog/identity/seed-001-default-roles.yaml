@@ -1,0 +1,102 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-001-default-roles
+      author: gateway-team
+      context: dev,uat,preprod,prod
+      comment: "10 built-in roles per Section 3.3.2"
+      changes:
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000001" }
+              - column: { name: name, value: SUPER_ADMIN }
+              - column: { name: description, value: "Full unrestricted access to everything" }
+              - column: { name: scope_type, value: GLOBAL }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000002" }
+              - column: { name: name, value: PLATFORM_ADMIN }
+              - column: { name: description, value: "Manage platform config, users, orgs" }
+              - column: { name: scope_type, value: GLOBAL }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000003" }
+              - column: { name: name, value: OPERATIONS_ADMIN }
+              - column: { name: description, value: "Monitor runtime, view analytics, alerts" }
+              - column: { name: scope_type, value: GLOBAL }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000004" }
+              - column: { name: name, value: AUDITOR }
+              - column: { name: description, value: "Read-only access to audit logs, reports" }
+              - column: { name: scope_type, value: GLOBAL }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000005" }
+              - column: { name: name, value: API_PUBLISHER_ADMIN }
+              - column: { name: description, value: "Full control over org APIs, policies" }
+              - column: { name: scope_type, value: ORG }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000006" }
+              - column: { name: name, value: API_PUBLISHER }
+              - column: { name: description, value: "Create/edit APIs, submit for approval" }
+              - column: { name: scope_type, value: ORG }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000007" }
+              - column: { name: name, value: API_REVIEWER }
+              - column: { name: description, value: "Review and approve/reject API publish" }
+              - column: { name: scope_type, value: ORG }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000008" }
+              - column: { name: name, value: POLICY_MANAGER }
+              - column: { name: description, value: "Create and manage policies and plans" }
+              - column: { name: scope_type, value: ORG }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000009" }
+              - column: { name: name, value: DEVELOPER }
+              - column: { name: description, value: "Browse catalog, subscribe, manage apps" }
+              - column: { name: scope_type, value: GLOBAL }
+              - column: { name: is_system, valueBoolean: true }
+        - insert:
+            schemaName: identity
+            tableName: roles
+            columns:
+              - column: { name: id, value: "00000000-0000-0000-0000-000000000010" }
+              - column: { name: name, value: VIEWER }
+              - column: { name: description, value: "Read-only portal access, browse docs" }
+              - column: { name: scope_type, value: GLOBAL }
+              - column: { name: is_system, valueBoolean: true }
+      rollback:
+        - delete:
+            schemaName: identity
+            tableName: roles
+            where: is_system = true

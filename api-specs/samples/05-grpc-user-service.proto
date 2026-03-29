@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package com.example.users;
+
+option java_package = "com.example.users.grpc";
+option java_multiple_files = true;
+
+// User Service — manages user accounts, profiles, and authentication
+service UserService {
+  // Create a new user account
+  rpc CreateUser (CreateUserRequest) returns (User);
+
+  // Get user by ID
+  rpc GetUser (GetUserRequest) returns (User);
+
+  // List users with pagination
+  rpc ListUsers (ListUsersRequest) returns (ListUsersResponse);
+
+  // Update user profile
+  rpc UpdateUser (UpdateUserRequest) returns (User);
+
+  // Delete user account
+  rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse);
+
+  // Authenticate user and return token
+  rpc Authenticate (AuthenticateRequest) returns (AuthenticateResponse);
+
+  // Stream user activity events
+  rpc StreamActivity (StreamActivityRequest) returns (stream ActivityEvent);
+}
+
+// Health check service
+service HealthService {
+  rpc Check (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  UserStatus status = 5;
+  int64 created_at = 6;
+  int64 updated_at = 7;
+  repeated string roles = 8;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string password = 2;
+  string display_name = 3;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string search = 3;
+  UserStatus status_filter = 4;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+  int32 page = 3;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  string display_name = 2;
+  string avatar_url = 3;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message DeleteUserResponse {
+  bool success = 1;
+}
+
+message AuthenticateRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message AuthenticateResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_in = 3;
+  User user = 4;
+}
+
+message StreamActivityRequest {
+  string user_id = 1;
+}
+
+message ActivityEvent {
+  string type = 1;
+  string message = 2;
+  int64 timestamp = 3;
+  map<string, string> metadata = 4;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  string version = 2;
+}
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  SUSPENDED = 2;
+  DEACTIVATED = 3;
+}

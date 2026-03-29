@@ -1,0 +1,23 @@
+[Unit]
+Description=API Gateway Notification Service
+After=network.target rabbitmq-server.service
+
+[Service]
+Type=simple
+User=gateway
+Group=gateway
+WorkingDirectory=/opt/gateway
+ExecStart=/usr/bin/java -jar \
+    -Xms128m -Xmx256m \
+    -Dspring.profiles.active=${GATEWAY_ENV} \
+    -Dspring.config.additional-location=/opt/gateway/config/notification-service/ \
+    /opt/gateway/bin/notification-service.jar
+EnvironmentFile=/etc/gateway/.env
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

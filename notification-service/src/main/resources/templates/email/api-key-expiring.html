@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>API Key Expiring Soon</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #e67e22;">API Key Expiring Soon</h2>
+    <p>Hi <span th:text="${name}">User</span>,</p>
+    <p>Your API key for application <strong th:text="${applicationName}">App</strong> is expiring soon.</p>
+    <p>Key identifier: <code th:text="${keyPrefix}">gw_***</code></p>
+    <p>Expires on: <strong th:text="${expiresAt}">2026-04-01</strong></p>
+    <p>To avoid service disruption, please rotate your API key before it expires:</p>
+    <ol>
+        <li>Go to your application settings in the developer portal</li>
+        <li>Generate a new API key</li>
+        <li>Update your application to use the new key</li>
+        <li>Revoke the old key once the transition is complete</li>
+    </ol>
+    <p>If you no longer need this key, you can safely ignore this notice.</p>
+    <p style="color: #666; font-size: 12px;">This is an automated message from the API Gateway Platform.</p>
+</body>
+</html>

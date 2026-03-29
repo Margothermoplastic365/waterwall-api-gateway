@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-create-applications
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: applications
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_app_user
+                    references: identity.users(id)
+              - column:
+                  name: org_id
+                  type: uuid
+                  constraints:
+                    foreignKeyName: fk_app_org
+                    references: identity.organizations(id)
+              - column:
+                  name: callback_urls
+                  type: jsonb
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: ACTIVE
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+        - addForeignKeyConstraint:
+            baseTableSchemaName: identity
+            baseTableName: api_keys
+            baseColumnNames: application_id
+            referencedTableSchemaName: identity
+            referencedTableName: applications
+            referencedColumnNames: id
+            constraintName: fk_apikey_app
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: applications

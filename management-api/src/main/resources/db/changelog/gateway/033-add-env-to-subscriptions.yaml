@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-033-add-env-to-subscriptions
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: subscriptions
+            columns:
+              - column: { name: environment_slug, type: varchar(50) }
+        - sql:
+            sql: |
+              UPDATE gateway.subscriptions SET environment_slug = 'dev' WHERE environment_slug IS NULL;
+        - addNotNullConstraint:
+            schemaName: gateway
+            tableName: subscriptions
+            columnName: environment_slug
+            columnDataType: varchar(50)
+        - dropUniqueConstraint:
+            schemaName: gateway
+            tableName: subscriptions
+            constraintName: uk_subscription_app_api
+        - addUniqueConstraint:
+            schemaName: gateway
+            tableName: subscriptions
+            constraintName: uk_subscription_app_api_env
+            columnNames: application_id, api_id, environment_slug
+      rollback:
+        - dropUniqueConstraint: { schemaName: gateway, tableName: subscriptions, constraintName: uk_subscription_app_api_env }
+        - dropColumn: { schemaName: gateway, tableName: subscriptions, columnName: environment_slug }

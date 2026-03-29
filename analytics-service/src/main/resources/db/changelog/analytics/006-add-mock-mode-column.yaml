@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: analytics-006-add-mock-mode
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: analytics
+            tableName: request_logs
+            columns:
+              - column: { name: mock_mode, type: boolean, defaultValueBoolean: false }
+      rollback:
+        - dropColumn: { schemaName: analytics, tableName: request_logs, columnName: mock_mode }

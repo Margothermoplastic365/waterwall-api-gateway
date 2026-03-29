@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: id-016-add-env-to-api-keys
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: identity
+            tableName: api_keys
+            columns:
+              - column: { name: environment_slug, type: varchar(50) }
+        - sql:
+            sql: |
+              UPDATE identity.api_keys SET environment_slug = 'dev' WHERE environment_slug IS NULL;
+        - addNotNullConstraint:
+            schemaName: identity
+            tableName: api_keys
+            columnName: environment_slug
+            columnDataType: varchar(50)
+        - createIndex:
+            schemaName: identity
+            tableName: api_keys
+            indexName: idx_api_keys_env
+            columns:
+              - column: { name: environment_slug }
+      rollback:
+        - dropIndex: { schemaName: identity, tableName: api_keys, indexName: idx_api_keys_env }
+        - dropColumn: { schemaName: identity, tableName: api_keys, columnName: environment_slug }

@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-029-create-incidents
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: incidents
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: severity, type: varchar(10), constraints: { nullable: false } }
+              - column: { name: title, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: status, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: affected_apis, type: jsonb }
+              - column: { name: created_by, type: uuid }
+              - column: { name: resolved_at, type: timestamptz }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-029-create-status-page-entries
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: status_page_entries
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: service_name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: message, type: text }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-029-create-maintenance-windows
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: maintenance_windows
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: title, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: start_time, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: end_time, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: affected_services, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

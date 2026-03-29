@@ -1,0 +1,926 @@
+'use client';
+
+import React, { useEffect, useState, useCallback } from 'react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082';
+
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token') || localStorage.getItem('admin_token') || localStorage.getItem('jwt_token');
+}
+function authHeaders(): Record<string, string> {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+}
+
+/* ---------- types ---------- */
+
+interface UsageSummary {
+  requestsToday: number;
+  requestsThisWeek: number;
+  requestsThisMonth: number;
+  averageLatencyMs: number;
+  errorRate: number;
+  activeSubscriptions: number;
+  topApis: { apiId: string; apiName: string; requestCount: number }[];
+}
+
+interface UsageHistoryEntry {
+  date: string;
+  requestCount: number;
+  errorCount: number;
+  averageLatencyMs: number;
+}
+
+interface ApiUsage {
+  apiId: string;
+  apiName: string;
+  totalRequests: number;
+  averageLatencyMs: number;
+  errorCount: number;
+  errorRate: number;
+}
+
+interface CostInfo {
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
+  totalRequests: number;
+  includedRequests: number;
+  overageRequests: number;
+  estimatedCost: number;
+  currency: string;
+  pricingModel: string;
+  planName: string;
+}
+
+interface Invoice {
+  id: string;
+  consumerId: string;
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
+  totalAmount: number;
+  currency: string;
+  status: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE';
+  lineItems: unknown[];
+  createdAt: string;
+  paystackReference?: string;
+  paidAt?: string;
+}
+
+interface PaymentMethod {
+  id: string;
+  type: string;
+  provider: string;
+  providerRef: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+interface UsageAlert {
+  id: string;
+  metric: string;
+  condition: string;
+  threshold: number;
+  enabled: boolean;
+}
+
+/* ---------- helpers ---------- */
+
+function fmtCurrency(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}
+
+function fmtDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtPeriod(start: string, end: string): string {
+  return `${fmtDate(start)} - ${fmtDate(end)}`;
+}
+
+const statusColors: Record<string, { bg: string; fg: string }> = {
+  DRAFT: { bg: '#f1f5f9', fg: '#64748b' },
+  SENT: { bg: '#dbeafe', fg: '#2563eb' },
+  PAID: { bg: '#dcfce7', fg: '#16a34a' },
+  OVERDUE: { bg: '#fee2e2', fg: '#dc2626' },
+};
+
+const paymentTypeIcons: Record<string, string> = {
+  CREDIT_CARD: '\u{1F4B3}',
+  BANK_ACCOUNT: '\u{1F3E6}',
+  PAYPAL: '\u{1F4B0}',
+};
+
+const ALERT_METRICS = ['Quota %', 'Monthly Cost', 'Error Rate', 'Latency P95'];
+const ALERT_CONDITIONS = ['>', '>=', '<', '<='];
+
+/* ---------- component ---------- */
+
+export default function BillingPage() {
+  const [summary, setSummary] = useState<UsageSummary | null>(null);
+  const [history, setHistory] = useState<UsageHistoryEntry[]>([]);
+  const [apiUsages, setApiUsages] = useState<ApiUsage[]>([]);
+  const [cost, setCost] = useState<CostInfo | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [sectionErrors, setSectionErrors] = useState<Record<string, string>>({});
+
+  // add payment method form
+  const [showAddPm, setShowAddPm] = useState(false);
+  const [pmForm, setPmForm] = useState({ type: 'CREDIT_CARD', provider: '', providerRef: '' });
+  const [pmSubmitting, setPmSubmitting] = useState(false);
+  const [pmError, setPmError] = useState('');
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [verifyMsg, setVerifyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Usage Alerts state
+  const [alerts, setAlerts] = useState<UsageAlert[]>([]);
+  const [alertForm, setAlertForm] = useState({ metric: ALERT_METRICS[0], condition: ALERT_CONDITIONS[0], threshold: '' });
+  const [alertSubmitting, setAlertSubmitting] = useState(false);
+  const [alertError, setAlertError] = useState('');
+  const [alertActionLoading, setAlertActionLoading] = useState<string | null>(null);
+
+  const setErr = (key: string, msg: string) =>
+    setSectionErrors((prev) => ({ ...prev, [key]: msg }));
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/alerts`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setAlerts(Array.isArray(data) ? data : []);
+      } else {
+        setErr('alerts', `Failed to load alerts (${res.status})`);
+      }
+    } catch (e) {
+      setErr('alerts', e instanceof Error ? e.message : 'Network error');
+    }
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setSectionErrors({});
+    const headers = authHeaders();
+
+    const fetchers: [string, string, (d: unknown) => void][] = [
+      ['summary', `${API_BASE}/v1/consumer/usage/summary`, (d) => setSummary(d as UsageSummary)],
+      ['history', `${API_BASE}/v1/consumer/usage/history?range=30d`, (d) => setHistory(((d as { data: UsageHistoryEntry[] }).data) || [])],
+      ['apis', `${API_BASE}/v1/consumer/usage/apis`, (d) => {
+        const list = ((d as { apis: ApiUsage[] }).apis) || [];
+        list.sort((a, b) => b.totalRequests - a.totalRequests);
+        setApiUsages(list);
+      }],
+      ['cost', `${API_BASE}/v1/consumer/usage/cost`, (d) => setCost(d as CostInfo)],
+      ['invoices', `${API_BASE}/v1/consumer/invoices`, (d) => setInvoices(Array.isArray(d) ? d : [])],
+      ['payments', `${API_BASE}/v1/consumer/payment-methods`, (d) => setPaymentMethods(Array.isArray(d) ? d : [])],
+    ];
+
+    await Promise.allSettled(
+      fetchers.map(async ([key, url, setter]) => {
+        try {
+          const res = await fetch(url, { headers });
+          if (!res.ok) { setErr(key, `Failed to load (${res.status})`); return; }
+          setter(await res.json());
+        } catch (e) {
+          setErr(key, e instanceof Error ? e.message : 'Network error');
+        }
+      }),
+    );
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // Check for payment verification callback
+    const params = new URLSearchParams(window.location.search);
+    const verify = params.get('verify');
+    const reference = params.get('reference') || params.get('trxref');
+    if (verify === 'true' && reference) {
+      fetch(`${API_BASE}/v1/consumer/payments/verify?reference=${reference}`, { headers: authHeaders() })
+        .then(res => {
+          if (res.ok) {
+            setVerifyMsg({ type: 'success', text: 'Payment successful! Your invoice has been marked as paid.' });
+          } else {
+            setVerifyMsg({ type: 'error', text: 'Payment verification failed. Please contact support.' });
+          }
+        })
+        .catch(() => setVerifyMsg({ type: 'error', text: 'Could not verify payment.' }));
+      // Clean URL
+      window.history.replaceState({}, '', '/billing');
+    }
+    loadAll();
+    loadAlerts();
+  }, [loadAll, loadAlerts]);
+
+  /* payment method actions */
+  const addPaymentMethod = async () => {
+    if (!pmForm.provider.trim() || !pmForm.providerRef.trim()) {
+      setPmError('Provider and reference are required.');
+      return;
+    }
+    setPmSubmitting(true);
+    setPmError('');
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/payment-methods`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(pmForm),
+      });
+      if (!res.ok) { setPmError(`Failed to add (${res.status})`); return; }
+      setShowAddPm(false);
+      setPmForm({ type: 'CREDIT_CARD', provider: '', providerRef: '' });
+      // reload payment methods
+      const listRes = await fetch(`${API_BASE}/v1/consumer/payment-methods`, { headers: authHeaders() });
+      if (listRes.ok) setPaymentMethods(await listRes.json());
+    } catch (e) {
+      setPmError(e instanceof Error ? e.message : 'Network error');
+    } finally {
+      setPmSubmitting(false);
+    }
+  };
+
+  const removePaymentMethod = async (id: string) => {
+    setActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/payment-methods/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) setPaymentMethods((prev) => prev.filter((p) => p.id !== id));
+    } catch { /* silent */ }
+    finally { setActionLoading(null); }
+  };
+
+  const setDefault = async (id: string) => {
+    setActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/payment-methods/${id}/default`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+      });
+      if (res.ok) setPaymentMethods((prev) => prev.map((p) => ({ ...p, isDefault: p.id === id })));
+    } catch { /* silent */ }
+    finally { setActionLoading(null); }
+  };
+
+  const handlePayInvoice = async (invoiceId: string) => {
+    setPayingInvoiceId(invoiceId);
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/invoices/${invoiceId}/pay`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(`Payment initiation failed (${res.status})`);
+      const data = await res.json();
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to initiate payment');
+      setPayingInvoiceId(null);
+    }
+  };
+
+  /* alert actions */
+  const createAlert = async () => {
+    const thresholdNum = parseFloat(alertForm.threshold);
+    if (isNaN(thresholdNum)) {
+      setAlertError('Threshold must be a valid number.');
+      return;
+    }
+    setAlertSubmitting(true);
+    setAlertError('');
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/alerts`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          metric: alertForm.metric,
+          condition: alertForm.condition,
+          threshold: thresholdNum,
+          enabled: true,
+        }),
+      });
+      if (!res.ok) {
+        setAlertError(`Failed to create alert (${res.status})`);
+        return;
+      }
+      setAlertForm({ metric: ALERT_METRICS[0], condition: ALERT_CONDITIONS[0], threshold: '' });
+      await loadAlerts();
+    } catch (e) {
+      setAlertError(e instanceof Error ? e.message : 'Network error');
+    } finally {
+      setAlertSubmitting(false);
+    }
+  };
+
+  const deleteAlert = async (id: string) => {
+    setAlertActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/alerts/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) setAlerts((prev) => prev.filter((a) => a.id !== id));
+    } catch { /* silent */ }
+    finally { setAlertActionLoading(null); }
+  };
+
+  const toggleAlert = async (id: string, currentEnabled: boolean) => {
+    setAlertActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/consumer/alerts/${id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ enabled: !currentEnabled }),
+      });
+      if (res.ok) {
+        setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, enabled: !currentEnabled } : a));
+      }
+    } catch { /* silent */ }
+    finally { setAlertActionLoading(null); }
+  };
+
+  /* ---------- shared styles ---------- */
+  const card: React.CSSProperties = {
+    backgroundColor: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 24, marginBottom: 24,
+  };
+  const sectionTitle: React.CSSProperties = { fontSize: 17, fontWeight: 600, color: '#1e293b', marginBottom: 16, marginTop: 0 };
+  const thStyle: React.CSSProperties = {
+    textAlign: 'left', padding: '10px 14px', fontSize: 12, fontWeight: 600, color: '#64748b',
+    textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0',
+  };
+  const tdStyle: React.CSSProperties = {
+    padding: '12px 14px', fontSize: 14, color: '#334155', borderBottom: '1px solid #f1f5f9',
+  };
+  const btnPrimary: React.CSSProperties = {
+    padding: '8px 18px', backgroundColor: '#3b82f6', color: '#fff', border: 'none',
+    borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  };
+  const btnSecondary: React.CSSProperties = {
+    padding: '6px 14px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0',
+    borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#475569', cursor: 'pointer',
+  };
+  const inputStyle: React.CSSProperties = {
+    padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, width: '100%', boxSizing: 'border-box',
+  };
+
+  const errBox = (msg: string) => (
+    <div style={{ padding: 14, backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626', fontSize: 13, marginBottom: 16 }}>
+      {msg}
+    </div>
+  );
+
+  const emptyState = (icon: string, title: string, subtitle: string) => (
+    <div style={{ padding: 48, textAlign: 'center' }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: '#334155', marginBottom: 6 }}>{title}</h3>
+      <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>{subtitle}</p>
+    </div>
+  );
+
+  /* loading skeleton */
+  if (loading) {
+    return (
+      <div style={{ maxWidth: 960 }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Billing &amp; Usage</h1>
+          <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Manage your plan, view usage, and billing history</p>
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} style={{ ...card, height: 100, background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite' }} />
+        ))}
+        <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+      </div>
+    );
+  }
+
+  /* chart helpers */
+  const maxRequests = Math.max(...history.map((h) => h.requestCount), 1);
+
+  return (
+    <div style={{ maxWidth: 960 }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Billing &amp; Usage</h1>
+        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Manage your plan, view usage, and billing history</p>
+      </div>
+
+      {/* Payment verification banner */}
+      {verifyMsg && (
+        <div style={{
+          padding: '14px 18px',
+          marginBottom: 20,
+          borderRadius: 10,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: verifyMsg.type === 'success' ? '#dcfce7' : '#fee2e2',
+          border: `1px solid ${verifyMsg.type === 'success' ? '#86efac' : '#fecaca'}`,
+          color: verifyMsg.type === 'success' ? '#166534' : '#991b1b',
+          fontSize: 14,
+          fontWeight: 500,
+        }}>
+          <span>{verifyMsg.text}</span>
+          <button
+            onClick={() => setVerifyMsg(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 18,
+              lineHeight: 1,
+              color: 'inherit',
+              padding: '0 4px',
+            }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
+      {/* =========== 1. USAGE OVERVIEW =========== */}
+      {sectionErrors.summary && errBox(sectionErrors.summary)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+        {[
+          { label: 'API Calls This Month', value: summary ? summary.requestsThisMonth.toLocaleString() : '--', icon: '\u{1F4CA}' },
+          { label: 'Avg Latency', value: summary ? `${Math.round(summary.averageLatencyMs)} ms` : '--', icon: '\u{26A1}' },
+          { label: 'Error Rate', value: summary ? `${(summary.errorRate * 100).toFixed(2)}%` : '--', icon: summary && summary.errorRate > 0.05 ? '\u{26A0}\u{FE0F}' : '\u{2705}' },
+          { label: 'Estimated Cost', value: cost ? fmtCurrency(cost.estimatedCost, cost.currency) : '--', icon: '\u{1F4B5}' },
+        ].map((stat) => (
+          <div key={stat.label} style={{
+            backgroundColor: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 20,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>{stat.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0f172a', lineHeight: 1 }}>{stat.value}</div>
+              </div>
+              <div style={{ fontSize: 24 }}>{stat.icon}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* =========== 2. USAGE CHART =========== */}
+      <div style={card}>
+        <h2 style={sectionTitle}>Daily Usage (Last 30 Days)</h2>
+        {sectionErrors.history && errBox(sectionErrors.history)}
+        {history.length === 0 && !sectionErrors.history
+          ? emptyState('\u{1F4C9}', 'No usage data yet', 'Usage history will appear once you start making API calls.')
+          : (
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              {history.map((entry) => {
+                const successWidth = ((entry.requestCount - entry.errorCount) / maxRequests) * 100;
+                const errorWidth = (entry.errorCount / maxRequests) * 100;
+                return (
+                  <div key={entry.date} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+                    <div style={{ width: 80, fontSize: 12, color: '#64748b', flexShrink: 0, textAlign: 'right' }}>
+                      {fmtDate(entry.date)}
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', backgroundColor: '#f1f5f9' }}>
+                      {successWidth > 0 && (
+                        <div style={{ width: `${successWidth}%`, backgroundColor: '#3b82f6', transition: 'width 0.3s' }} />
+                      )}
+                      {errorWidth > 0 && (
+                        <div style={{ width: `${errorWidth}%`, backgroundColor: '#ef4444', transition: 'width 0.3s' }} />
+                      )}
+                    </div>
+                    <div style={{ width: 80, fontSize: 12, color: '#334155', flexShrink: 0 }}>
+                      {entry.requestCount.toLocaleString()}
+                      {entry.errorCount > 0 && (
+                        <span style={{ color: '#ef4444', marginLeft: 4 }}>({entry.errorCount} err)</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: '#94a3b8' }}>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, backgroundColor: '#3b82f6', borderRadius: 2, marginRight: 4 }} />Successful</span>
+                <span><span style={{ display: 'inline-block', width: 10, height: 10, backgroundColor: '#ef4444', borderRadius: 2, marginRight: 4 }} />Errors</span>
+              </div>
+            </div>
+          )}
+      </div>
+
+      {/* =========== 3. PER-API BREAKDOWN =========== */}
+      <div style={card}>
+        <h2 style={sectionTitle}>Per-API Breakdown</h2>
+        {sectionErrors.apis && errBox(sectionErrors.apis)}
+        {apiUsages.length === 0 && !sectionErrors.apis
+          ? emptyState('\u{1F310}', 'No API usage yet', 'Per-API statistics will appear once you subscribe and start calling APIs.')
+          : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>API Name</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Requests</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Avg Latency</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Error Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {apiUsages.map((api) => (
+                    <tr key={api.apiId}>
+                      <td style={{ ...tdStyle, fontWeight: 600 }}>{api.apiName}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{api.totalRequests.toLocaleString()}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{Math.round(api.averageLatencyMs)} ms</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: api.errorRate > 0.05 ? '#dc2626' : '#16a34a' }}>
+                        {(api.errorRate * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+
+      {/* =========== 4. CURRENT PLAN & COST =========== */}
+      <div style={{ ...card, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }} />
+        <h2 style={sectionTitle}>Current Plan &amp; Cost</h2>
+        {sectionErrors.cost && errBox(sectionErrors.cost)}
+        {cost ? (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Plan</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>{cost.planName}</div>
+                <div style={{ display: 'flex', gap: 24, fontSize: 13 }}>
+                  <div><span style={{ color: '#94a3b8' }}>Pricing: </span><span style={{ fontWeight: 600, color: '#0f172a' }}>{cost.pricingModel}</span></div>
+                  <div><span style={{ color: '#94a3b8' }}>Included: </span><span style={{ fontWeight: 600, color: '#0f172a' }}>{cost.includedRequests.toLocaleString()} requests</span></div>
+                  {cost.overageRequests > 0 && (
+                    <div><span style={{ color: '#94a3b8' }}>Overage: </span><span style={{ fontWeight: 600, color: '#ef4444' }}>{cost.overageRequests.toLocaleString()} requests</span></div>
+                  )}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>Estimated Cost</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a' }}>{fmtCurrency(cost.estimatedCost, cost.currency)}</div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>{fmtPeriod(cost.billingPeriodStart, cost.billingPeriodEnd)}</div>
+              </div>
+            </div>
+            {/* progress bar: usage vs included */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+                <span>{cost.totalRequests.toLocaleString()} used</span>
+                <span>{cost.includedRequests.toLocaleString()} included</span>
+              </div>
+              <div style={{ height: 10, backgroundColor: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 6, transition: 'width 0.3s',
+                  width: `${Math.min((cost.totalRequests / Math.max(cost.includedRequests, 1)) * 100, 100)}%`,
+                  backgroundColor: cost.totalRequests > cost.includedRequests ? '#ef4444' : '#3b82f6',
+                }} />
+              </div>
+              {cost.totalRequests > cost.includedRequests && (
+                <div style={{ fontSize: 12, color: '#ef4444', marginTop: 4 }}>
+                  Over quota by {(cost.totalRequests - cost.includedRequests).toLocaleString()} requests
+                </div>
+              )}
+            </div>
+            <div style={{ textAlign: 'right', marginTop: 12 }}>
+              <a href="/subscriptions" style={{
+                padding: '8px 16px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0',
+                borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#475569', textDecoration: 'none',
+              }}>
+                Change Plan
+              </a>
+            </div>
+          </>
+        ) : !sectionErrors.cost ? (
+          emptyState('\u{1F4CB}', 'No plan information', 'Plan and cost details will appear once you are subscribed to a plan.')
+        ) : null}
+      </div>
+
+      {/* =========== 5. INVOICES =========== */}
+      <div style={card}>
+        <h2 style={sectionTitle}>Invoices</h2>
+        {sectionErrors.invoices && errBox(sectionErrors.invoices)}
+        {invoices.length === 0 && !sectionErrors.invoices
+          ? emptyState('\u{1F4B3}', 'No invoices yet', 'Invoices will appear here when billing is active for your account.')
+          : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Period</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Amount</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }}>Status</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Date</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => {
+                    const colors = statusColors[inv.status] || statusColors.DRAFT;
+                    return (
+                      <tr key={inv.id}>
+                        <td style={tdStyle}>{fmtPeriod(inv.billingPeriodStart, inv.billingPeriodEnd)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600 }}>{fmtCurrency(inv.totalAmount, inv.currency)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                            fontSize: 12, fontWeight: 600, backgroundColor: colors.bg, color: colors.fg,
+                          }}>
+                            {inv.status}
+                          </span>
+                          {inv.status === 'PAID' && inv.paidAt && (
+                            <span style={{ marginLeft: 8, fontSize: 12, color: '#64748b' }}>
+                              {fmtDate(inv.paidAt)}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtDate(inv.createdAt)}</td>
+                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          {inv.status !== 'PAID' && (
+                            <button
+                              onClick={() => handlePayInvoice(inv.id)}
+                              disabled={payingInvoiceId !== null}
+                              style={{
+                                padding: '6px 16px',
+                                backgroundColor: payingInvoiceId === inv.id ? '#93c5fd' : '#3b82f6',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 8,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: payingInvoiceId !== null ? 'not-allowed' : 'pointer',
+                                opacity: payingInvoiceId !== null && payingInvoiceId !== inv.id ? 0.5 : 1,
+                              }}
+                            >
+                              {payingInvoiceId === inv.id ? 'Paying...' : 'Pay Now'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+
+      {/* =========== 6. PAYMENT METHODS =========== */}
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ ...sectionTitle, marginBottom: 0 }}>Payment Methods</h2>
+          <button style={btnPrimary} onClick={() => { setShowAddPm(true); setPmError(''); }}>
+            + Add Payment Method
+          </button>
+        </div>
+        {sectionErrors.payments && errBox(sectionErrors.payments)}
+
+        {/* Add form */}
+        {showAddPm && (
+          <div style={{
+            backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0',
+            padding: 20, marginBottom: 20,
+          }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', margin: '0 0 16px' }}>Add Payment Method</h3>
+            {pmError && errBox(pmError)}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Type</label>
+                <select
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                  value={pmForm.type}
+                  onChange={(e) => setPmForm((p) => ({ ...p, type: e.target.value }))}
+                >
+                  <option value="CREDIT_CARD">Credit Card</option>
+                  <option value="BANK_ACCOUNT">Bank Account</option>
+                  <option value="PAYPAL">PayPal</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Provider</label>
+                <input
+                  style={inputStyle}
+                  placeholder="e.g. Visa, Stripe"
+                  value={pmForm.provider}
+                  onChange={(e) => setPmForm((p) => ({ ...p, provider: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Reference</label>
+                <input
+                  style={inputStyle}
+                  placeholder="e.g. **** **** **** 4242"
+                  value={pmForm.providerRef}
+                  onChange={(e) => setPmForm((p) => ({ ...p, providerRef: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button style={btnSecondary} onClick={() => setShowAddPm(false)} disabled={pmSubmitting}>Cancel</button>
+              <button style={{ ...btnPrimary, opacity: pmSubmitting ? 0.6 : 1 }} onClick={addPaymentMethod} disabled={pmSubmitting}>
+                {pmSubmitting ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* List */}
+        {paymentMethods.length === 0 && !sectionErrors.payments && !showAddPm
+          ? emptyState('\u{1F4B3}', 'No payment methods', 'Add a payment method to enable automatic billing.')
+          : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {paymentMethods.map((pm) => {
+                const last4 = pm.providerRef.length >= 4 ? pm.providerRef.slice(-4) : pm.providerRef;
+                const isActioning = actionLoading === pm.id;
+                return (
+                  <div key={pm.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '14px 18px', backgroundColor: pm.isDefault ? '#f0f9ff' : '#fff',
+                    borderRadius: 10, border: `1px solid ${pm.isDefault ? '#bae6fd' : '#e2e8f0'}`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ fontSize: 28 }}>{paymentTypeIcons[pm.type] || '\u{1F4B3}'}</span>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                          {pm.provider} {'\u2022\u2022\u2022\u2022'} {last4}
+                          {pm.isDefault && (
+                            <span style={{
+                              marginLeft: 8, padding: '2px 8px', backgroundColor: '#dbeafe', color: '#2563eb',
+                              borderRadius: 999, fontSize: 11, fontWeight: 600,
+                            }}>
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                          {pm.type.replace('_', ' ')} &middot; Added {fmtDate(pm.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {!pm.isDefault && (
+                        <button
+                          style={{ ...btnSecondary, opacity: isActioning ? 0.5 : 1 }}
+                          onClick={() => setDefault(pm.id)}
+                          disabled={isActioning}
+                        >
+                          Set Default
+                        </button>
+                      )}
+                      <button
+                        style={{ ...btnSecondary, color: '#dc2626', opacity: isActioning ? 0.5 : 1 }}
+                        onClick={() => removePaymentMethod(pm.id)}
+                        disabled={isActioning}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+      </div>
+
+      {/* =========== 7. USAGE ALERTS =========== */}
+      <div style={card}>
+        <h2 style={sectionTitle}>Usage Alerts</h2>
+        <p style={{ fontSize: 13, color: '#94a3b8', margin: '-8px 0 20px' }}>Get notified when your usage exceeds thresholds</p>
+        {sectionErrors.alerts && errBox(sectionErrors.alerts)}
+
+        {/* Create Alert form */}
+        <div style={{
+          backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0',
+          padding: 20, marginBottom: 20,
+        }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', margin: '0 0 16px' }}>Create Alert</h3>
+          {alertError && errBox(alertError)}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Metric</label>
+              <select
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                value={alertForm.metric}
+                onChange={(e) => setAlertForm((p) => ({ ...p, metric: e.target.value }))}
+              >
+                {ALERT_METRICS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Condition</label>
+              <select
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                value={alertForm.condition}
+                onChange={(e) => setAlertForm((p) => ({ ...p, condition: e.target.value }))}
+              >
+                {ALERT_CONDITIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Threshold</label>
+              <input
+                style={inputStyle}
+                type="number"
+                placeholder="e.g. 80"
+                value={alertForm.threshold}
+                onChange={(e) => setAlertForm((p) => ({ ...p, threshold: e.target.value }))}
+              />
+            </div>
+            <button
+              style={{ ...btnPrimary, opacity: alertSubmitting ? 0.6 : 1, whiteSpace: 'nowrap' }}
+              onClick={createAlert}
+              disabled={alertSubmitting}
+            >
+              {alertSubmitting ? 'Creating...' : 'Create Alert'}
+            </button>
+          </div>
+        </div>
+
+        {/* Alert Rules list */}
+        {alerts.length === 0 && !sectionErrors.alerts
+          ? emptyState('\u{1F514}', 'No alert rules yet', 'Create an alert above to get notified when usage thresholds are exceeded.')
+          : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Metric</th>
+                    <th style={thStyle}>Condition</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Threshold</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }}>Enabled</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alerts.map((alert) => {
+                    const isActioning = alertActionLoading === alert.id;
+                    return (
+                      <tr key={alert.id}>
+                        <td style={{ ...tdStyle, fontWeight: 600 }}>{alert.metric}</td>
+                        <td style={tdStyle}>{alert.condition}</td>
+                        <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{alert.threshold}</td>
+                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          <button
+                            onClick={() => toggleAlert(alert.id, alert.enabled)}
+                            disabled={isActioning}
+                            style={{
+                              position: 'relative',
+                              display: 'inline-block',
+                              width: 44,
+                              height: 24,
+                              borderRadius: 12,
+                              border: 'none',
+                              backgroundColor: alert.enabled ? '#3b82f6' : '#cbd5e1',
+                              cursor: isActioning ? 'not-allowed' : 'pointer',
+                              transition: 'background-color 0.2s',
+                              opacity: isActioning ? 0.5 : 1,
+                              padding: 0,
+                            }}
+                          >
+                            <span style={{
+                              position: 'absolute',
+                              top: 2,
+                              left: alert.enabled ? 22 : 2,
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              backgroundColor: '#fff',
+                              transition: 'left 0.2s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                            }} />
+                          </button>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'center' }}>
+                          <button
+                            style={{ ...btnSecondary, color: '#dc2626', opacity: isActioning ? 0.5 : 1 }}
+                            onClick={() => deleteAlert(alert.id)}
+                            disabled={isActioning}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}

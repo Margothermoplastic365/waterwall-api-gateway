@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: an-002-create-metrics-tables
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: analytics
+            tableName: metrics_1m
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid }
+              - column: { name: window_start, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: request_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: error_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: latency_sum_ms, type: bigint, defaultValueNumeric: 0 }
+              - column: { name: latency_max_ms, type: int, defaultValueNumeric: 0 }
+              - column: { name: bytes_in, type: bigint, defaultValueNumeric: 0 }
+              - column: { name: bytes_out, type: bigint, defaultValueNumeric: 0 }
+        - addUniqueConstraint: { schemaName: analytics, tableName: metrics_1m, columnNames: "api_id, window_start", constraintName: uq_metrics1m }
+        - createTable:
+            schemaName: analytics
+            tableName: metrics_1h
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid }
+              - column: { name: window_start, type: timestamptz, constraints: { nullable: false } }
+              - column: { name: request_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: error_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: latency_sum_ms, type: bigint, defaultValueNumeric: 0 }
+              - column: { name: latency_max_ms, type: int, defaultValueNumeric: 0 }
+        - addUniqueConstraint: { schemaName: analytics, tableName: metrics_1h, columnNames: "api_id, window_start", constraintName: uq_metrics1h }
+        - createTable:
+            schemaName: analytics
+            tableName: metrics_1d
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid }
+              - column: { name: window_start, type: date, constraints: { nullable: false } }
+              - column: { name: request_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: error_count, type: int, defaultValueNumeric: 0 }
+              - column: { name: latency_sum_ms, type: bigint, defaultValueNumeric: 0 }
+              - column: { name: latency_max_ms, type: int, defaultValueNumeric: 0 }
+        - addUniqueConstraint: { schemaName: analytics, tableName: metrics_1d, columnNames: "api_id, window_start", constraintName: uq_metrics1d }
+      rollback:
+        - dropTable: { schemaName: analytics, tableName: metrics_1d }
+        - dropTable: { schemaName: analytics, tableName: metrics_1h }
+        - dropTable: { schemaName: analytics, tableName: metrics_1m }

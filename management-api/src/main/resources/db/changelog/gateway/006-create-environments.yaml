@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-006-create-environments
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: environments
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(50), constraints: { nullable: false, unique: true } }
+              - column: { name: slug, type: varchar(50), constraints: { nullable: false, unique: true } }
+              - column: { name: description, type: text }
+              - column: { name: config, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+        - sql:
+            sql: |
+              INSERT INTO gateway.environments (name, slug, description) VALUES
+              ('Development', 'dev', 'Development and integration testing'),
+              ('UAT', 'uat', 'User Acceptance Testing'),
+              ('Pre-Production', 'preprod', 'Final validation before production'),
+              ('Production', 'prod', 'Live production traffic')
+              ON CONFLICT (slug) DO NOTHING;
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: environments }

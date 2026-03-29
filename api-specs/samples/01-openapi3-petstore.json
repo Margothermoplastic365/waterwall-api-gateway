@@ -1,0 +1,127 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Swagger Petstore",
+    "description": "A sample API that uses a petstore as an example — backed by a real live server at petstore3.swagger.io",
+    "version": "1.0.17"
+  },
+  "servers": [
+    { "url": "https://petstore3.swagger.io/api/v3" }
+  ],
+  "tags": [
+    { "name": "pet" },
+    { "name": "store" },
+    { "name": "user" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "api_key": { "type": "apiKey", "name": "api_key", "in": "header" }
+    }
+  },
+  "paths": {
+    "/pet/findByStatus": {
+      "get": {
+        "summary": "Find pets by status",
+        "description": "Multiple status values can be provided with comma separated strings",
+        "tags": ["pet"],
+        "parameters": [
+          { "name": "status", "in": "query", "required": true, "schema": { "type": "string", "enum": ["available", "pending", "sold"], "default": "available" } }
+        ],
+        "responses": { "200": { "description": "Successful operation" }, "400": { "description": "Invalid status value" } }
+      }
+    },
+    "/pet/findByTags": {
+      "get": {
+        "summary": "Find pets by tags",
+        "tags": ["pet"],
+        "parameters": [
+          { "name": "tags", "in": "query", "required": true, "schema": { "type": "array", "items": { "type": "string" } } }
+        ],
+        "responses": { "200": { "description": "Successful operation" } }
+      }
+    },
+    "/pet/{petId}": {
+      "get": {
+        "summary": "Find pet by ID",
+        "tags": ["pet"],
+        "parameters": [ { "name": "petId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } } ],
+        "responses": { "200": { "description": "Successful operation" }, "404": { "description": "Pet not found" } }
+      },
+      "post": {
+        "summary": "Update a pet with form data",
+        "tags": ["pet"],
+        "parameters": [ { "name": "petId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } } ],
+        "responses": { "200": { "description": "Successful operation" }, "405": { "description": "Invalid input" } }
+      },
+      "delete": {
+        "summary": "Delete a pet",
+        "tags": ["pet"],
+        "parameters": [ { "name": "petId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } } ],
+        "responses": { "200": { "description": "Successful operation" }, "400": { "description": "Invalid pet value" } }
+      }
+    },
+    "/pet/{petId}/uploadImage": {
+      "post": {
+        "summary": "Upload an image for a pet",
+        "tags": ["pet"],
+        "parameters": [ { "name": "petId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } } ],
+        "responses": { "200": { "description": "Successful operation" } }
+      }
+    },
+    "/store/inventory": {
+      "get": {
+        "summary": "Returns pet inventories by status",
+        "description": "Returns a map of status codes to quantities",
+        "tags": ["store"],
+        "responses": { "200": { "description": "Successful operation" } }
+      }
+    },
+    "/store/order": {
+      "post": {
+        "summary": "Place an order for a pet",
+        "tags": ["store"],
+        "responses": { "200": { "description": "Successful operation" }, "405": { "description": "Invalid input" } }
+      }
+    },
+    "/store/order/{orderId}": {
+      "get": {
+        "summary": "Find purchase order by ID",
+        "tags": ["store"],
+        "parameters": [ { "name": "orderId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } } ],
+        "responses": { "200": { "description": "Successful operation" }, "404": { "description": "Order not found" } }
+      },
+      "delete": {
+        "summary": "Delete purchase order by ID",
+        "tags": ["store"],
+        "parameters": [ { "name": "orderId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } } ],
+        "responses": { "200": { "description": "Successful operation" }, "404": { "description": "Order not found" } }
+      }
+    },
+    "/user/login": {
+      "get": {
+        "summary": "Log user into the system",
+        "tags": ["user"],
+        "parameters": [
+          { "name": "username", "in": "query", "schema": { "type": "string" } },
+          { "name": "password", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Successful operation" }, "400": { "description": "Invalid username/password supplied" } }
+      }
+    },
+    "/user/logout": {
+      "get": {
+        "summary": "Log out current logged in user session",
+        "tags": ["user"],
+        "responses": { "200": { "description": "Successful operation" } }
+      }
+    },
+    "/user/{username}": {
+      "get": {
+        "summary": "Get user by user name",
+        "tags": ["user"],
+        "parameters": [ { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Successful operation" }, "404": { "description": "User not found" } }
+      }
+    }
+  }
+}

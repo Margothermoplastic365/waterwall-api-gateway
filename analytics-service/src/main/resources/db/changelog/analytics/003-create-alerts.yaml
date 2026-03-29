@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: an-003-create-alerts
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: analytics
+            tableName: alert_rules
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: metric, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: condition, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: threshold, type: decimal }
+              - column: { name: window_minutes, type: int, defaultValueNumeric: 5 }
+              - column: { name: api_id, type: uuid }
+              - column: { name: enabled, type: boolean, defaultValueBoolean: true }
+              - column: { name: channels, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+        - createTable:
+            schemaName: analytics
+            tableName: alert_history
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true } }
+              - column: { name: rule_id, type: uuid, constraints: { foreignKeyName: fk_alert_rule, references: analytics.alert_rules(id) } }
+              - column: { name: status, type: varchar(20) }
+              - column: { name: value, type: decimal }
+              - column: { name: message, type: text }
+              - column: { name: acknowledged_at, type: timestamptz }
+              - column: { name: acknowledged_by, type: uuid }
+              - column: { name: triggered_at, type: timestamptz, defaultValueComputed: now() }
+      rollback:
+        - dropTable: { schemaName: analytics, tableName: alert_history }
+        - dropTable: { schemaName: analytics, tableName: alert_rules }

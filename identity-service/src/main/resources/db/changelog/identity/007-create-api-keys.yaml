@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-create-api-keys
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: api_keys
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: application_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+              - column:
+                  name: key_prefix
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key_hash
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_used_at
+                  type: timestamptz
+              - column:
+                  name: expires_at
+                  type: timestamptz
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+        - createIndex:
+            schemaName: identity
+            tableName: api_keys
+            indexName: idx_apikeys_prefix
+            columns:
+              - column:
+                  name: key_prefix
+        - createIndex:
+            schemaName: identity
+            tableName: api_keys
+            indexName: idx_apikeys_app
+            columns:
+              - column:
+                  name: application_id
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: api_keys

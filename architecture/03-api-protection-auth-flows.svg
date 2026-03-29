@@ -1,0 +1,326 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 950" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#333"/></marker>
+    <marker id="arrGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#43a047"/></marker>
+    <marker id="arrRed" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#e53935"/></marker>
+  </defs>
+
+  <rect width="1300" height="950" fill="#f8f9fc" rx="8"/>
+
+  <!-- Title -->
+  <rect x="0" y="0" width="1300" height="55" fill="#0d47a1" rx="8"/>
+  <text x="650" y="35" text-anchor="middle" fill="white" font-size="20" font-weight="bold">API PROTECTION — 4 AUTHENTICATION TYPE FLOWS</text>
+
+  <!-- ====== AUTH TYPE 1: API KEY ====== -->
+  <rect x="20" y="70" width="620" height="200" rx="10" fill="white" stroke="#43a047" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="20" y="70" width="620" height="30" rx="10" fill="#43a047"/>
+  <text x="330" y="90" text-anchor="middle" fill="white" font-size="13" font-weight="bold">TYPE 1: API KEY AUTHENTICATION</text>
+
+  <!-- Flow boxes -->
+  <rect x="35" y="115" width="85" height="50" rx="6" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+  <text x="77" y="138" text-anchor="middle" fill="#283593" font-size="9" font-weight="bold">Consumer</text>
+  <text x="77" y="152" text-anchor="middle" fill="#5c6bc0" font-size="8">X-API-Key</text>
+
+  <line x1="120" y1="140" x2="150" y2="140" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="155" y="110" width="130" height="60" rx="6" fill="#e8f5e9" stroke="#43a047" stroke-width="1.5"/>
+  <text x="220" y="130" text-anchor="middle" fill="#2e7d32" font-size="9" font-weight="bold">Gateway</text>
+  <text x="220" y="143" text-anchor="middle" fill="#333" font-size="8">1. Extract key</text>
+  <text x="220" y="155" text-anchor="middle" fill="#333" font-size="8">2. Hash + lookup</text>
+  <text x="220" y="167" text-anchor="middle" fill="#333" font-size="8">3. Check valid/expired</text>
+
+  <line x1="285" y1="130" x2="315" y2="130" stroke="#43a047" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="300" y="124" fill="#43a047" font-size="7">cache hit</text>
+
+  <rect x="320" y="115" width="95" height="50" rx="6" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+  <text x="367" y="135" text-anchor="middle" fill="#e65100" font-size="9" font-weight="bold">Redis Cache</text>
+  <text x="367" y="150" text-anchor="middle" fill="#666" font-size="8">Key hash → app</text>
+
+  <line x1="285" y1="160" x2="315" y2="178" stroke="#e53935" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arrRed)"/>
+  <text x="290" y="178" fill="#e53935" font-size="7">miss</text>
+
+  <rect x="320" y="172" width="95" height="35" rx="6" fill="#e3f2fd" stroke="#42a5f5" stroke-width="1"/>
+  <text x="367" y="190" text-anchor="middle" fill="#1565c0" font-size="9" font-weight="bold">PostgreSQL</text>
+  <text x="367" y="202" text-anchor="middle" fill="#666" font-size="7">api_keys table</text>
+
+  <line x1="220" y1="170" x2="220" y2="195" stroke="#333" stroke-width="1"/>
+  <line x1="220" y1="195" x2="435" y2="195" stroke="#333" stroke-width="1"/>
+
+  <rect x="440" y="115" width="110" height="50" rx="6" fill="#e8f5e9" stroke="#43a047" stroke-width="1.5"/>
+  <text x="495" y="133" text-anchor="middle" fill="#2e7d32" font-size="9" font-weight="bold">Resolve</text>
+  <text x="495" y="146" text-anchor="middle" fill="#333" font-size="8">App → Sub → Plan</text>
+  <text x="495" y="159" text-anchor="middle" fill="#333" font-size="8">Apply rate limit</text>
+
+  <line x1="550" y1="140" x2="570" y2="140" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="575" y="120" width="55" height="40" rx="6" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1"/>
+  <text x="602" y="140" text-anchor="middle" fill="#6a1b9a" font-size="9" font-weight="bold">Upstream</text>
+  <text x="602" y="153" text-anchor="middle" fill="#9c27b0" font-size="7">Service</text>
+
+  <!-- Security level -->
+  <text x="35" y="245" fill="#333" font-size="9" font-weight="bold">Security: MEDIUM</text>
+  <text x="35" y="258" fill="#666" font-size="8">Best for: Simple integrations, scripts, server-to-server</text>
+  <rect x="490" y="235" width="140" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="560" y="254" text-anchor="middle" fill="#2e7d32" font-size="9" font-weight="bold">Stateless (no round-trip)</text>
+
+  <!-- ====== AUTH TYPE 2: OAuth2 / JWT ====== -->
+  <rect x="660" y="70" width="620" height="200" rx="10" fill="white" stroke="#1565c0" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="660" y="70" width="620" height="30" rx="10" fill="#1565c0"/>
+  <text x="970" y="90" text-anchor="middle" fill="white" font-size="13" font-weight="bold">TYPE 2: OAuth2 / JWT BEARER TOKEN</text>
+
+  <!-- Step 1: Get token -->
+  <rect x="675" y="112" width="85" height="50" rx="6" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+  <text x="717" y="135" text-anchor="middle" fill="#283593" font-size="9" font-weight="bold">Consumer</text>
+  <text x="717" y="150" text-anchor="middle" fill="#5c6bc0" font-size="8">Step 1: Get JWT</text>
+
+  <line x1="760" y1="125" x2="795" y2="125" stroke="#43a047" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="777" y="120" fill="#43a047" font-size="7">auth request</text>
+
+  <rect x="800" y="108" width="115" height="58" rx="6" fill="#e8f5e9" stroke="#43e97b" stroke-width="1.5"/>
+  <text x="857" y="127" text-anchor="middle" fill="#1b5e20" font-size="9" font-weight="bold">identity-service</text>
+  <text x="857" y="140" text-anchor="middle" fill="#2e7d32" font-size="8">Spring Auth Server</text>
+  <text x="857" y="152" text-anchor="middle" fill="#2e7d32" font-size="8">Issues JWT</text>
+  <text x="857" y="163" text-anchor="middle" fill="#2e7d32" font-size="7">(signed RS256)</text>
+
+  <line x1="800" y1="150" x2="760" y2="150" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="777" y="160" fill="#1565c0" font-size="7">JWT token</text>
+
+  <!-- Step 2: Call API -->
+  <line x1="717" y1="162" x2="717" y2="180" stroke="#333" stroke-width="1"/>
+  <text x="725" y="178" fill="#333" font-size="7">Step 2</text>
+
+  <rect x="675" y="182" width="85" height="35" rx="6" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+  <text x="717" y="200" text-anchor="middle" fill="#283593" font-size="8">Authz: Bearer</text>
+  <text x="717" y="212" text-anchor="middle" fill="#5c6bc0" font-size="7">&lt;jwt&gt;</text>
+
+  <line x1="760" y1="200" x2="795" y2="200" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="800" y="180" width="130" height="55" rx="6" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="865" y="198" text-anchor="middle" fill="#0d47a1" font-size="9" font-weight="bold">Gateway</text>
+  <text x="865" y="211" text-anchor="middle" fill="#333" font-size="8">1. Verify signature (JWKS)</text>
+  <text x="865" y="223" text-anchor="middle" fill="#333" font-size="8">2. Check exp, iss, aud</text>
+  <text x="865" y="233" text-anchor="middle" fill="#333" font-size="8">3. Check scopes/roles</text>
+
+  <line x1="930" y1="207" x2="960" y2="207" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="965" y="190" width="85" height="35" rx="6" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+  <text x="1007" y="208" text-anchor="middle" fill="#e65100" font-size="9" font-weight="bold">JWKS Cache</text>
+  <text x="1007" y="220" text-anchor="middle" fill="#666" font-size="7">Public keys</text>
+
+  <line x1="930" y1="220" x2="1075" y2="220" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="1080" y="195" width="55" height="35" rx="6" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1"/>
+  <text x="1107" y="213" text-anchor="middle" fill="#6a1b9a" font-size="9" font-weight="bold">Upstream</text>
+
+  <!-- JWT Claims -->
+  <rect x="1080" y="235" width="190" height="28" rx="4" fill="#e8f5e9" stroke="#66bb6a" stroke-width="1"/>
+  <text x="1175" y="252" text-anchor="middle" fill="#2e7d32" font-size="7">JWT claims: sub, org_id, roles, scope, plan</text>
+
+  <!-- Security level -->
+  <text x="675" y="245" fill="#333" font-size="9" font-weight="bold">Security: HIGH</text>
+  <text x="675" y="258" fill="#666" font-size="8">Best for: Web/mobile apps, M2M, delegated access</text>
+
+  <!-- ====== AUTH TYPE 3: mTLS ====== -->
+  <rect x="20" y="290" width="620" height="200" rx="10" fill="white" stroke="#e53935" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="20" y="290" width="620" height="30" rx="10" fill="#e53935"/>
+  <text x="330" y="310" text-anchor="middle" fill="white" font-size="13" font-weight="bold">TYPE 3: mTLS (MUTUAL TLS)</text>
+
+  <rect x="35" y="335" width="85" height="50" rx="6" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+  <text x="77" y="355" text-anchor="middle" fill="#283593" font-size="9" font-weight="bold">Consumer</text>
+  <text x="77" y="370" text-anchor="middle" fill="#5c6bc0" font-size="8">+ Client Cert</text>
+
+  <line x1="120" y1="355" x2="150" y2="355" stroke="#e53935" stroke-width="2"/>
+  <text x="135" y="348" fill="#e53935" font-size="7">TLS</text>
+  <line x1="120" y1="365" x2="150" y2="365" stroke="#e53935" stroke-width="2" marker-end="url(#arrRed)"/>
+  <text x="135" y="378" fill="#e53935" font-size="7">mutual</text>
+
+  <rect x="155" y="330" width="175" height="75" rx="6" fill="#ffebee" stroke="#e53935" stroke-width="1.5"/>
+  <text x="242" y="348" text-anchor="middle" fill="#b71c1c" font-size="9" font-weight="bold">Gateway (TLS Layer)</text>
+  <text x="165" y="363" fill="#333" font-size="8">1. TLS handshake</text>
+  <text x="165" y="376" fill="#333" font-size="8">2. Request client cert</text>
+  <text x="165" y="389" fill="#333" font-size="8">3. Validate chain + expiry</text>
+  <text x="165" y="401" fill="#333" font-size="8">4. Check CRL/OCSP revocation</text>
+
+  <line x1="330" y1="365" x2="355" y2="365" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="360" y="335" width="120" height="60" rx="6" fill="#e8f5e9" stroke="#43a047" stroke-width="1.5"/>
+  <text x="420" y="353" text-anchor="middle" fill="#2e7d32" font-size="9" font-weight="bold">Cert Resolver</text>
+  <text x="370" y="368" fill="#333" font-size="8">Extract CN/SAN</text>
+  <text x="370" y="381" fill="#333" font-size="8">Map to App</text>
+  <text x="370" y="394" fill="#333" font-size="8">→ Sub → Plan</text>
+
+  <line x1="480" y1="365" x2="510" y2="365" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="515" y="342" width="115" height="45" rx="6" fill="#e0f2f1" stroke="#00897b" stroke-width="1"/>
+  <text x="572" y="360" text-anchor="middle" fill="#00695c" font-size="9" font-weight="bold">Trust Store</text>
+  <text x="572" y="375" text-anchor="middle" fill="#333" font-size="8">CA certs, CRL</text>
+  <text x="572" y="387" text-anchor="middle" fill="#333" font-size="8">Cert pinning rules</text>
+
+  <!-- Forward headers -->
+  <rect x="360" y="405" width="270" height="22" rx="4" fill="#fff8e1"/>
+  <text x="368" y="420" fill="#f57f17" font-size="8">Forwards: X-Client-Cert-CN, X-Client-Cert-Fingerprint → Upstream</text>
+
+  <text x="35" y="460" fill="#333" font-size="9" font-weight="bold">Security: VERY HIGH</text>
+  <text x="35" y="473" fill="#666" font-size="8">Best for: Banking, healthcare, government, zero-trust B2B</text>
+  <rect x="420" y="450" width="210" height="28" rx="4" fill="#ffcdd2"/>
+  <text x="525" y="468" text-anchor="middle" fill="#b71c1c" font-size="9" font-weight="bold">Both sides prove identity (mutual)</text>
+
+  <!-- ====== AUTH TYPE 4: BASIC AUTH ====== -->
+  <rect x="660" y="290" width="620" height="200" rx="10" fill="white" stroke="#ff9800" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="660" y="290" width="620" height="30" rx="10" fill="#ff9800"/>
+  <text x="970" y="310" text-anchor="middle" fill="white" font-size="13" font-weight="bold">TYPE 4: BASIC AUTH</text>
+
+  <rect x="675" y="340" width="100" height="50" rx="6" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+  <text x="725" y="360" text-anchor="middle" fill="#283593" font-size="9" font-weight="bold">Consumer</text>
+  <text x="725" y="375" text-anchor="middle" fill="#5c6bc0" font-size="7">Authorization:</text>
+  <text x="725" y="385" text-anchor="middle" fill="#5c6bc0" font-size="7">Basic base64(u:p)</text>
+
+  <line x1="775" y1="365" x2="810" y2="365" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="790" y="358" fill="#e65100" font-size="7">HTTPS only!</text>
+
+  <rect x="815" y="335" width="145" height="60" rx="6" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5"/>
+  <text x="887" y="353" text-anchor="middle" fill="#e65100" font-size="9" font-weight="bold">Gateway</text>
+  <text x="825" y="368" fill="#333" font-size="8">1. Base64 decode</text>
+  <text x="825" y="381" fill="#333" font-size="8">2. Extract user:pass</text>
+  <text x="825" y="394" fill="#333" font-size="8">3. Hash compare</text>
+
+  <line x1="960" y1="355" x2="995" y2="355" stroke="#43a047" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="977" y="348" fill="#43a047" font-size="7">cache</text>
+
+  <rect x="1000" y="340" width="90" height="40" rx="6" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+  <text x="1045" y="358" text-anchor="middle" fill="#e65100" font-size="9" font-weight="bold">Redis</text>
+  <text x="1045" y="372" text-anchor="middle" fill="#666" font-size="7">Hashed creds</text>
+
+  <line x1="960" y1="375" x2="995" y2="390" stroke="#e53935" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arrRed)"/>
+  <text x="975" y="398" fill="#e53935" font-size="7">miss</text>
+
+  <rect x="1000" y="385" width="90" height="30" rx="6" fill="#e3f2fd" stroke="#42a5f5" stroke-width="1"/>
+  <text x="1045" y="404" text-anchor="middle" fill="#1565c0" font-size="8">identity-svc</text>
+
+  <line x1="887" y1="395" x2="887" y2="420" stroke="#333" stroke-width="1"/>
+  <line x1="887" y1="420" x2="1120" y2="420" stroke="#333" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <rect x="1125" y="350" width="55" height="35" rx="6" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1"/>
+  <text x="1152" y="370" text-anchor="middle" fill="#6a1b9a" font-size="9" font-weight="bold">Upstream</text>
+
+  <!-- Warning -->
+  <rect x="675" y="435" width="300" height="22" rx="4" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+  <text x="825" y="450" text-anchor="middle" fill="#e65100" font-size="8" font-weight="bold">⚠ MUST use TLS — credentials are Base64, not encrypted</text>
+
+  <text x="675" y="470" fill="#333" font-size="9" font-weight="bold">Security: LOW</text>
+  <text x="675" y="483" fill="#666" font-size="8">Best for: Legacy systems, dev environments, simple scripts</text>
+
+  <!-- ====== PER-API POLICY ====== -->
+  <rect x="20" y="510" width="1260" height="210" rx="10" fill="white" stroke="#6a1b9a" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="20" y="510" width="1260" height="35" rx="10" fill="#6a1b9a"/>
+  <text x="650" y="533" text-anchor="middle" fill="white" font-size="14" font-weight="bold">PER-API AUTHENTICATION POLICY — Publisher Configures Per API</text>
+
+  <!-- Mode: ANY -->
+  <rect x="40" y="560" width="380" height="145" rx="8" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1"/>
+  <text x="230" y="580" text-anchor="middle" fill="#6a1b9a" font-size="12" font-weight="bold">Mode: ANY (use one of enabled types)</text>
+  <text x="50" y="600" fill="#333" font-size="10">Consumer can authenticate with ANY ONE of:</text>
+
+  <rect x="55" y="612" width="75" height="22" rx="4" fill="#c8e6c9"/>
+  <text x="92" y="628" text-anchor="middle" fill="#2e7d32" font-size="9">API Key</text>
+  <text x="140" y="628" fill="#333" font-size="12">OR</text>
+  <rect x="165" y="612" width="85" height="22" rx="4" fill="#bbdefb"/>
+  <text x="207" y="628" text-anchor="middle" fill="#1565c0" font-size="9">OAuth2/JWT</text>
+  <text x="260" y="628" fill="#333" font-size="12">OR</text>
+  <rect x="280" y="612" width="55" height="22" rx="4" fill="#ffcdd2"/>
+  <text x="307" y="628" text-anchor="middle" fill="#c62828" font-size="9">mTLS</text>
+  <text x="345" y="628" fill="#333" font-size="12">OR</text>
+  <rect x="360" y="612" width="50" height="22" rx="4" fill="#ffe0b2"/>
+  <text x="385" y="628" text-anchor="middle" fill="#e65100" font-size="9">Basic</text>
+
+  <text x="50" y="660" fill="#333" font-size="10" font-weight="bold">Example:</text>
+  <text x="50" y="676" fill="#555" font-size="9">Orders API — accepts API Key OR OAuth2 JWT</text>
+  <text x="50" y="692" fill="#555" font-size="9">→ Script uses API Key, Web app uses OAuth2</text>
+
+  <!-- Mode: ALL -->
+  <rect x="440" y="560" width="380" height="145" rx="8" fill="#fce4ec" stroke="#e53935" stroke-width="1"/>
+  <text x="630" y="580" text-anchor="middle" fill="#b71c1c" font-size="12" font-weight="bold">Mode: ALL (must satisfy all enabled types)</text>
+  <text x="450" y="600" fill="#333" font-size="10">Consumer must provide ALL enabled types:</text>
+
+  <rect x="465" y="612" width="55" height="22" rx="4" fill="#ffcdd2"/>
+  <text x="492" y="628" text-anchor="middle" fill="#c62828" font-size="9">mTLS</text>
+  <text x="530" y="628" fill="#333" font-size="12">AND</text>
+  <rect x="555" y="612" width="85" height="22" rx="4" fill="#bbdefb"/>
+  <text x="597" y="628" text-anchor="middle" fill="#1565c0" font-size="9">OAuth2/JWT</text>
+
+  <text x="450" y="660" fill="#333" font-size="10" font-weight="bold">Example:</text>
+  <text x="450" y="676" fill="#555" font-size="9">Payment API — requires mTLS + JWT</text>
+  <text x="450" y="692" fill="#555" font-size="9">→ Maximum security, both parties verified</text>
+
+  <!-- Per-Operation -->
+  <rect x="840" y="560" width="425" height="145" rx="8" fill="#e8f5e9" stroke="#43a047" stroke-width="1"/>
+  <text x="1052" y="580" text-anchor="middle" fill="#2e7d32" font-size="12" font-weight="bold">Per-Operation Override</text>
+  <text x="850" y="600" fill="#333" font-size="10">Different auth per endpoint:</text>
+
+  <rect x="855" y="612" width="395" height="85" rx="4" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="865" y="630" fill="#555" font-size="9" font-family="Consolas, monospace">GET  /orders        → API Key OR JWT  (read)</text>
+  <text x="865" y="646" fill="#555" font-size="9" font-family="Consolas, monospace">POST /orders        → JWT only        (write)</text>
+  <text x="865" y="662" fill="#555" font-size="9" font-family="Consolas, monospace">DELETE /orders/{id} → JWT + MFA step-up</text>
+  <text x="865" y="678" fill="#555" font-size="9" font-family="Consolas, monospace">GET  /health        → Anonymous (no auth)</text>
+  <text x="865" y="694" fill="#555" font-size="9" font-family="Consolas, monospace">GET  /orders        → scope: orders:read</text>
+
+  <!-- ====== COMPARISON TABLE ====== -->
+  <rect x="20" y="740" width="1260" height="195" rx="10" fill="white" stroke="#455a64" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="20" y="740" width="1260" height="30" rx="10" fill="#455a64"/>
+  <text x="650" y="760" text-anchor="middle" fill="white" font-size="13" font-weight="bold">AUTHENTICATION TYPE COMPARISON</text>
+
+  <!-- Table Header -->
+  <rect x="30" y="780" width="170" height="25" fill="#eceff1"/>
+  <text x="115" y="797" text-anchor="middle" fill="#37474f" font-size="10" font-weight="bold">Aspect</text>
+  <rect x="200" y="780" width="200" height="25" fill="#c8e6c9"/>
+  <text x="300" y="797" text-anchor="middle" fill="#2e7d32" font-size="10" font-weight="bold">API Key</text>
+  <rect x="400" y="780" width="270" height="25" fill="#bbdefb"/>
+  <text x="535" y="797" text-anchor="middle" fill="#1565c0" font-size="10" font-weight="bold">OAuth2 / JWT</text>
+  <rect x="670" y="780" width="270" height="25" fill="#ffcdd2"/>
+  <text x="805" y="797" text-anchor="middle" fill="#c62828" font-size="10" font-weight="bold">mTLS</text>
+  <rect x="940" y="780" width="330" height="25" fill="#ffe0b2"/>
+  <text x="1105" y="797" text-anchor="middle" fill="#e65100" font-size="10" font-weight="bold">Basic Auth</text>
+
+  <!-- Rows -->
+  <text x="40" y="823" fill="#333" font-size="9" font-weight="bold">Security Level</text>
+  <text x="210" y="823" fill="#333" font-size="9">Medium</text>
+  <text x="410" y="823" fill="#333" font-size="9">High</text>
+  <text x="680" y="823" fill="#333" font-size="9">Very High</text>
+  <text x="950" y="823" fill="#333" font-size="9">Low</text>
+
+  <line x1="30" y1="830" x2="1270" y2="830" stroke="#e0e0e0" stroke-width="0.5"/>
+
+  <text x="40" y="847" fill="#333" font-size="9" font-weight="bold">Gateway Round-trip</text>
+  <text x="210" y="847" fill="#333" font-size="9">No (Redis cache)</text>
+  <text x="410" y="847" fill="#333" font-size="9">No (JWKS cached locally)</text>
+  <text x="680" y="847" fill="#333" font-size="9">No (TLS layer)</text>
+  <text x="950" y="847" fill="#333" font-size="9">Optional (can cache hash)</text>
+
+  <line x1="30" y1="854" x2="1270" y2="854" stroke="#e0e0e0" stroke-width="0.5"/>
+
+  <text x="40" y="871" fill="#333" font-size="9" font-weight="bold">User Context</text>
+  <text x="210" y="871" fill="#333" font-size="9">App only (no user)</text>
+  <text x="410" y="871" fill="#333" font-size="9">User + App (claims in JWT)</text>
+  <text x="680" y="871" fill="#333" font-size="9">App only (cert CN)</text>
+  <text x="950" y="871" fill="#333" font-size="9">App only</text>
+
+  <line x1="30" y1="878" x2="1270" y2="878" stroke="#e0e0e0" stroke-width="0.5"/>
+
+  <text x="40" y="895" fill="#333" font-size="9" font-weight="bold">Rotation</text>
+  <text x="210" y="895" fill="#333" font-size="9">Manual (regen key)</text>
+  <text x="410" y="895" fill="#333" font-size="9">Auto (refresh token)</text>
+  <text x="680" y="895" fill="#333" font-size="9">Manual (renew cert)</text>
+  <text x="950" y="895" fill="#333" font-size="9">Manual (change password)</text>
+
+  <line x1="30" y1="902" x2="1270" y2="902" stroke="#e0e0e0" stroke-width="0.5"/>
+
+  <text x="40" y="919" fill="#333" font-size="9" font-weight="bold">Best For</text>
+  <text x="210" y="919" fill="#333" font-size="9">Scripts, simple M2M</text>
+  <text x="410" y="919" fill="#333" font-size="9">Web/mobile apps, secure M2M</text>
+  <text x="680" y="919" fill="#333" font-size="9">Banking, govt, zero-trust</text>
+  <text x="950" y="919" fill="#333" font-size="9">Legacy compat, dev envs</text>
+
+  <!-- Version -->
+  <text x="1270" y="943" text-anchor="end" fill="#999" font-size="9">v2.0 | 2026-03-25</text>
+</svg>

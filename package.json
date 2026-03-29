@@ -1,0 +1,16 @@
+{
+  "name": "api-gateway-platform",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "gateway-portal",
+    "gateway-admin"
+  ],
+  "scripts": {
+    "dev:portal": "cd gateway-portal && npm run dev",
+    "dev:admin": "cd gateway-admin && npm run dev",
+    "build:portal": "cd gateway-portal && npm run build",
+    "build:admin": "cd gateway-admin && npm run build",
+    "build:all": "npm run build:portal && npm run build:admin"
+  }
+}

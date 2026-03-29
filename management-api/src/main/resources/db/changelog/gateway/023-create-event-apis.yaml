@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-023-create-event-apis
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: event_apis
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: protocol, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: connection_config, type: jsonb }
+              - column: { name: topics, type: jsonb }
+              - column: { name: schema_config, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-023-create-event-subscriptions
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: event_subscriptions
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: event_api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_event_sub_event_api, references: gateway.event_apis(id) } }
+              - column: { name: consumer_id, type: uuid }
+              - column: { name: topic, type: varchar(500) }
+              - column: { name: status, type: varchar(50), defaultValue: "ACTIVE" }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

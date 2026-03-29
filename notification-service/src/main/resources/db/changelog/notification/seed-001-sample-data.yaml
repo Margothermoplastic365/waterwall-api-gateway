@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-001-sample-notifications
+      author: gateway-team
+      context: dev,uat
+      comment: "Seed sample notifications, webhook endpoints, and preferences"
+      changes:
+        - sql:
+            sql: |
+              -- ============================================================
+              -- NOTIFICATION PREFERENCES
+              -- ============================================================
+              INSERT INTO notification.notification_preferences (id, user_id, email_enabled, in_app_enabled, webhook_enabled, muted_event_types)
+              VALUES
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', true,  true,  true,  '[]'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000002', true,  true,  false, '[]'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000003', true,  true,  true,  '["API_DEPRECATED"]'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000004', false, true,  false, '["SUBSCRIPTION_APPROVED","API_DEPRECATED"]'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000005', true,  true,  true,  '[]'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000008', true,  true,  false, '[]')
+              ON CONFLICT (user_id) DO NOTHING;
+
+              -- ============================================================
+              -- WEBHOOK ENDPOINTS
+              -- ============================================================
+              INSERT INTO notification.webhook_endpoints (id, user_id, url, secret, active, created_at)
+              VALUES
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', 'https://hooks.acme-corp.com/gateway-events',  'whsec_acme_prod_abc123',   true,  now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000003', 'https://hooks.globex.io/api-notifications',   'whsec_globex_prod_def456', true,  now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000005', 'https://webhooks.initech.dev/gateway',        'whsec_initech_prod_ghi789',true,  now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- SAMPLE NOTIFICATIONS
+              -- ============================================================
+              INSERT INTO notification.notifications (user_id, title, body, type, read, created_at)
+              VALUES
+                -- Alice (Acme)
+                ('20000000-0000-0000-0000-000000000001', 'API Published Successfully',           'Payment Processing API v2.1.0 has been published to production.',                     'INFO',    true,  now() - interval '5 days'),
+                ('20000000-0000-0000-0000-000000000001', 'New Subscription Request',             'Dave Test App has requested access to Payment Processing API on the Free plan.',       'INFO',    false, now() - interval '2 hours'),
+                ('20000000-0000-0000-0000-000000000001', 'Rate Limit Alert',                     'Payment Processing API exceeded 80% of rate limit quota in the last hour.',            'WARNING', false, now() - interval '30 minutes'),
+
+                -- Bob (Acme)
+                ('20000000-0000-0000-0000-000000000002', 'Notification Hub API Draft Created',   'Your API draft has been saved. Complete the setup to publish it.',                     'INFO',    true,  now() - interval '3 days'),
+                ('20000000-0000-0000-0000-000000000002', 'Deployment Successful',                'Notification Hub API deployed to dev environment.',                                    'INFO',    true,  now() - interval '3 days'),
+
+                -- Carol (Globex)
+                ('20000000-0000-0000-0000-000000000003', 'Gateway Node Degraded',                'gw-node-03.gateway.local is reporting degraded status. Last heartbeat 5 minutes ago.', 'WARNING', false, now() - interval '5 minutes'),
+                ('20000000-0000-0000-0000-000000000003', 'Shipment Tracking API Published',      'Shipment Tracking API v1.3.0 deployed to production successfully.',                    'INFO',    true,  now() - interval '7 days'),
+                ('20000000-0000-0000-0000-000000000003', 'New Subscription Approved',            'Acme Payment Gateway subscribed to Shipment Tracking API (Enterprise plan).',          'INFO',    true,  now() - interval '6 days'),
+
+                -- Dave (Globex)
+                ('20000000-0000-0000-0000-000000000004', 'Subscription Approved',                'Your subscription to Weather Forecast API (Free plan) has been approved.',             'INFO',    true,  now() - interval '10 days'),
+                ('20000000-0000-0000-0000-000000000004', 'Subscription Pending',                 'Your subscription to Payment Processing API is pending approval.',                     'INFO',    false, now() - interval '2 hours'),
+                ('20000000-0000-0000-0000-000000000004', 'API Key Rotated',                      'Your Dev Sandbox Key has been rotated. Update your application configuration.',        'ALERT',   false, now() - interval '1 hour'),
+
+                -- Eve (Initech)
+                ('20000000-0000-0000-0000-000000000005', 'Data Transform API Published',         'Data Transform API v1.0.0 is now live in the developer portal.',                       'INFO',    true,  now() - interval '10 days'),
+                ('20000000-0000-0000-0000-000000000005', 'High Error Rate Detected',             'Data Transform API error rate reached 3.2% in the last 5 minutes.',                    'ERROR',   false, now() - interval '45 minutes'),
+
+                -- Heidi (Auditor)
+                ('20000000-0000-0000-0000-000000000008', 'Weekly Audit Summary',                 'Platform audit summary: 1,247 API calls, 3 policy changes, 2 new subscriptions.',     'INFO',    false, now() - interval '1 day'),
+                ('20000000-0000-0000-0000-000000000008', 'Compliance Check Passed',              'Monthly SOC2 compliance scan completed with no findings.',                             'INFO',    true,  now() - interval '3 days')
+              ON CONFLICT DO NOTHING;
+
+      rollback:
+        - sql:
+            sql: |
+              DELETE FROM notification.notifications WHERE user_id LIKE '20000000%';
+              DELETE FROM notification.webhook_endpoints WHERE user_id LIKE '20000000%';
+              DELETE FROM notification.notification_preferences WHERE user_id LIKE '20000000%';

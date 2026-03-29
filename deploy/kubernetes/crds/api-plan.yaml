@@ -1,0 +1,100 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: apiplans.gateway.io
+spec:
+  group: gateway.io
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                apiRef:
+                  type: string
+                  description: "Reference to an ApiDefinition name"
+                tier:
+                  type: string
+                  enum:
+                    - FREE
+                    - BASIC
+                    - PROFESSIONAL
+                    - ENTERPRISE
+                rateLimits:
+                  type: object
+                  properties:
+                    requestsPerSecond:
+                      type: integer
+                    requestsPerMinute:
+                      type: integer
+                    requestsPerDay:
+                      type: integer
+                    burstAllowance:
+                      type: integer
+                quotas:
+                  type: object
+                  properties:
+                    monthlyRequests:
+                      type: integer
+                    monthlyBandwidthMb:
+                      type: integer
+                requiresApproval:
+                  type: boolean
+                  default: false
+                price:
+                  type: object
+                  properties:
+                    amount:
+                      type: number
+                    currency:
+                      type: string
+                      default: USD
+                    billingPeriod:
+                      type: string
+                      enum:
+                        - MONTHLY
+                        - YEARLY
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                subscriberCount:
+                  type: integer
+                message:
+                  type: string
+                lastReconciled:
+                  type: string
+                  format: date-time
+      additionalPrinterColumns:
+        - name: Tier
+          type: string
+          jsonPath: .spec.tier
+        - name: Approval
+          type: boolean
+          jsonPath: .spec.requiresApproval
+        - name: Subscribers
+          type: integer
+          jsonPath: .status.subscriberCount
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: apiplans
+    singular: apiplan
+    kind: ApiPlan
+    shortNames:
+      - apipl

@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-002-create-routes
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: routes
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_route_api, references: gateway.apis(id), deleteCascade: true } }
+              - column: { name: path, type: varchar(500), constraints: { nullable: false } }
+              - column: { name: method, type: varchar(10), defaultValue: GET }
+              - column: { name: upstream_url, type: varchar(1000), constraints: { nullable: false } }
+              - column: { name: auth_types, type: jsonb, defaultValue: '["API_KEY","OAUTH2_JWT"]' }
+              - column: { name: priority, type: int, defaultValueNumeric: 0 }
+              - column: { name: strip_prefix, type: boolean, defaultValueBoolean: false }
+              - column: { name: enabled, type: boolean, defaultValueBoolean: true }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+        - createIndex: { schemaName: gateway, tableName: routes, indexName: idx_routes_api, columns: [{ column: { name: api_id } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: routes }

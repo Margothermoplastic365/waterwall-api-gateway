@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-036-add-deployment-overrides
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: api_deployments
+            columns:
+              - column: { name: upstream_overrides, type: jsonb }
+              - column: { name: rate_limit_override, type: jsonb }
+              - column: { name: auth_enforcement, type: varchar(20) }
+      rollback:
+        - dropColumn: { schemaName: gateway, tableName: api_deployments, columnName: auth_enforcement }
+        - dropColumn: { schemaName: gateway, tableName: api_deployments, columnName: rate_limit_override }
+        - dropColumn: { schemaName: gateway, tableName: api_deployments, columnName: upstream_overrides }

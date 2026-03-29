@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-004-create-plans
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(100), constraints: { nullable: false, unique: true } }
+              - column: { name: description, type: text }
+              - column: { name: rate_limits, type: jsonb }
+              - column: { name: quota, type: jsonb }
+              - column: { name: enforcement, type: varchar(10), defaultValue: SOFT }
+              - column: { name: status, type: varchar(20), defaultValue: ACTIVE }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: plans }

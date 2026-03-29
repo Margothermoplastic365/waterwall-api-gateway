@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-030-create-developer-sandboxes
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: developer_sandboxes
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: user_id, type: uuid, constraints: { nullable: false, unique: true } }
+              - column: { name: environment_config, type: jsonb }
+              - column: { name: rate_limit_override, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: expires_at, type: timestamptz }
+        - createIndex: { schemaName: gateway, tableName: developer_sandboxes, indexName: idx_dev_sandboxes_user, columns: [{ column: { name: user_id } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: developer_sandboxes }
+
+  - changeSet:
+      id: gw-030-create-api-changelogs
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: api_changelogs
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: version_from, type: varchar(50) }
+              - column: { name: version_to, type: varchar(50) }
+              - column: { name: changes, type: jsonb }
+              - column: { name: breaking_changes, type: jsonb }
+              - column: { name: migration_guide, type: text }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+        - addForeignKeyConstraint:
+            baseTableSchemaName: gateway
+            baseTableName: api_changelogs
+            baseColumnNames: api_id
+            referencedTableSchemaName: gateway
+            referencedTableName: apis
+            referencedColumnNames: id
+            constraintName: fk_api_changelogs_api_id
+            onDelete: CASCADE
+        - createIndex: { schemaName: gateway, tableName: api_changelogs, indexName: idx_api_changelogs_api, columns: [{ column: { name: api_id } }] }
+        - createIndex: { schemaName: gateway, tableName: api_changelogs, indexName: idx_api_changelogs_versions, columns: [{ column: { name: api_id } }, { column: { name: version_from } }, { column: { name: version_to } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: api_changelogs }

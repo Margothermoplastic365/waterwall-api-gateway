@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-015-create-api-specs
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: api_specs
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, unique: true, foreignKeyName: fk_api_specs_api, references: gateway.apis(id) } }
+              - column: { name: spec_content, type: text }
+              - column: { name: spec_format, type: varchar(30), defaultValue: "OPENAPI_3" }
+              - column: { name: lint_score, type: int }
+              - column: { name: last_linted_at, type: timestamptz }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+        - createIndex: { schemaName: gateway, tableName: api_specs, indexName: idx_api_specs_api_id, columns: [{ column: { name: api_id } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: api_specs }

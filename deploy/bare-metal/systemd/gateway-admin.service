@@ -1,0 +1,20 @@
+[Unit]
+Description=API Gateway Admin Dashboard (Next.js - Admin Facing)
+After=network.target management-api.service
+
+[Service]
+Type=simple
+User=gateway
+Group=gateway
+WorkingDirectory=/opt/gateway/admin
+ExecStart=/usr/bin/node server.js
+EnvironmentFile=/etc/gateway/.env
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

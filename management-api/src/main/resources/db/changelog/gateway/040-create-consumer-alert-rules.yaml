@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-040-create-consumer-alert-rules
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: consumer_alert_rules
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: user_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: metric, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: condition, type: varchar(10), constraints: { nullable: false } }
+              - column: { name: threshold, type: "decimal(19,4)", constraints: { nullable: false } }
+              - column: { name: enabled, type: boolean, defaultValueBoolean: true, constraints: { nullable: false } }
+              - column: { name: last_triggered_at, type: timestamptz }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-040-idx-consumer-alert-rules-user-id
+      author: gateway-team
+      changes:
+        - createIndex:
+            schemaName: gateway
+            tableName: consumer_alert_rules
+            indexName: idx_consumer_alert_rules_user_id
+            columns:
+              - column: { name: user_id }
+
+  - changeSet:
+      id: gw-040-idx-consumer-alert-rules-enabled
+      author: gateway-team
+      changes:
+        - createIndex:
+            schemaName: gateway
+            tableName: consumer_alert_rules
+            indexName: idx_consumer_alert_rules_enabled
+            columns:
+              - column: { name: enabled }

@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-011-create-approval-requests
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: approval_requests
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: resource_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(20), defaultValue: PENDING }
+              - column: { name: requested_by, type: uuid }
+              - column: { name: approved_by, type: uuid }
+              - column: { name: rejected_reason, type: text }
+              - column: { name: requested_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: resolved_at, type: timestamptz }
+        - createIndex: { schemaName: gateway, tableName: approval_requests, indexName: idx_approval_status, columns: [{ column: { name: status } }] }
+        - createIndex: { schemaName: gateway, tableName: approval_requests, indexName: idx_approval_resource, columns: [{ column: { name: resource_id } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: approval_requests }

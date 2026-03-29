@@ -1,0 +1,122 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-005-sample-data
+      author: gateway-team
+      context: dev,uat
+      comment: "Seed sample organizations, users, applications, and API keys for development"
+      changes:
+        - sql:
+            sql: |
+              -- ============================================================
+              -- ORGANIZATIONS
+              -- ============================================================
+              INSERT INTO identity.organizations (id, name, slug, description, domain, status, billing_contact_email, technical_contact_email, created_at, updated_at)
+              VALUES
+                ('10000000-0000-0000-0000-000000000001', 'Acme Corp', 'acme-corp', 'Global technology company building next-gen payment APIs', 'acme-corp.com', 'ACTIVE', 'billing@acme-corp.com', 'tech@acme-corp.com', now(), now()),
+                ('10000000-0000-0000-0000-000000000002', 'Globex Industries', 'globex', 'Leading provider of logistics and supply chain APIs', 'globex.io', 'ACTIVE', 'billing@globex.io', 'devops@globex.io', now(), now()),
+                ('10000000-0000-0000-0000-000000000003', 'Initech Solutions', 'initech', 'Enterprise integration and data transformation services', 'initech.dev', 'ACTIVE', 'accounts@initech.dev', 'platform@initech.dev', now(), now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- USERS (password for all: "password123" — Argon2 hash)
+              -- ============================================================
+              INSERT INTO identity.users (id, email, password_hash, status, email_verified, password_changed_at, created_at, updated_at)
+              VALUES
+                ('20000000-0000-0000-0000-000000000001', 'alice@acme-corp.com',    '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', true,  now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000002', 'bob@acme-corp.com',      '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', true,  now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000003', 'carol@globex.io',        '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', true,  now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000004', 'dave@globex.io',         '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', true,  now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000005', 'eve@initech.dev',        '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', true,  now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000006', 'frank@initech.dev',      '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', false, now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000007', 'grace@example.com',      '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'PENDING_VERIFICATION', false, now(), now(), now()),
+                ('20000000-0000-0000-0000-000000000008', 'heidi@example.com',      '{argon2id}$argon2id$v=19$m=16384,t=2,p=1$Y2hhbmdlbWVzYWx0$kR8RQwSB3J5FhGvHkGPYMg', 'ACTIVE', true,  now(), now(), now())
+              ON CONFLICT (email) DO NOTHING;
+
+              -- ============================================================
+              -- USER PROFILES
+              -- ============================================================
+              INSERT INTO identity.user_profiles (id, user_id, display_name, phone, timezone, language, job_title, department, bio)
+              VALUES
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', 'Alice Chen',    '+1-555-0101', 'America/New_York',    'en', 'API Publisher Lead',   'Engineering',    'Leads the payments API team at Acme'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000002', 'Bob Martinez',  '+1-555-0102', 'America/Chicago',     'en', 'Senior Developer',     'Engineering',    'Full-stack developer focused on API integrations'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000003', 'Carol Nguyen',  '+44-20-7946-0958', 'Europe/London',   'en', 'Platform Admin',       'DevOps',         'Manages Globex API platform infrastructure'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000004', 'Dave Wilson',   '+1-555-0104', 'America/Los_Angeles', 'en', 'Developer',            'Engineering',    'Backend services developer at Globex'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000005', 'Eve Tanaka',    '+81-3-1234-5678', 'Asia/Tokyo',       'ja', 'Integration Architect','Architecture',   'Designs enterprise integration patterns at Initech'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000006', 'Frank Müller',  '+49-30-12345678',  'Europe/Berlin',   'de', 'Junior Developer',     'Engineering',    'New to the API platform team'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000007', 'Grace Lee',     NULL,               'Asia/Seoul',      'ko', 'Freelance Developer',  NULL,             'Exploring the API marketplace'),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000008', 'Heidi Olsen',   '+47-22-12-34-56',  'Europe/Oslo',     'en', 'QA Engineer',          'Quality',        'API testing and quality assurance')
+              ON CONFLICT (user_id) DO NOTHING;
+
+              -- ============================================================
+              -- ORG MEMBERSHIPS
+              -- ============================================================
+              INSERT INTO identity.org_members (id, user_id, org_id, org_role, joined_at)
+              VALUES
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'OWNER',  now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'MEMBER', now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002', 'OWNER',  now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 'MEMBER', now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000003', 'OWNER',  now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000003', 'MEMBER', now()),
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 'MEMBER', now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- ROLE ASSIGNMENTS
+              -- ============================================================
+              INSERT INTO identity.role_assignments (id, user_id, role_id, scope_type, scope_id, assigned_by, assigned_at)
+              VALUES
+                -- Alice: API_PUBLISHER_ADMIN scoped to Acme
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000005', 'ORG', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000099', now()),
+                -- Bob: API_PUBLISHER scoped to Acme
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000006', 'ORG', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000099', now()),
+                -- Carol: PLATFORM_ADMIN globally
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 'GLOBAL', NULL, '00000000-0000-0000-0000-000000000099', now()),
+                -- Dave: DEVELOPER globally
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000009', 'GLOBAL', NULL, '00000000-0000-0000-0000-000000000099', now()),
+                -- Eve: API_PUBLISHER_ADMIN scoped to Initech
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', 'ORG', '10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000099', now()),
+                -- Frank: DEVELOPER globally
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000009', 'GLOBAL', NULL, '00000000-0000-0000-0000-000000000099', now()),
+                -- Grace: VIEWER globally
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000010', 'GLOBAL', NULL, '00000000-0000-0000-0000-000000000099', now()),
+                -- Heidi: AUDITOR globally
+                (gen_random_uuid(), '20000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000004', 'GLOBAL', NULL, '00000000-0000-0000-0000-000000000099', now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- APPLICATIONS
+              -- ============================================================
+              INSERT INTO identity.applications (id, name, description, user_id, org_id, callback_urls, status, created_at, updated_at)
+              VALUES
+                ('30000000-0000-0000-0000-000000000001', 'Acme Payment Gateway',   'Production payment processing app',         '20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '["https://payments.acme-corp.com/callback"]', 'ACTIVE', now(), now()),
+                ('30000000-0000-0000-0000-000000000002', 'Acme Mobile App',        'Mobile companion app for Acme services',    '20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', '["https://m.acme-corp.com/oauth/callback"]',  'ACTIVE', now(), now()),
+                ('30000000-0000-0000-0000-000000000003', 'Globex Shipping Tracker', 'Real-time shipment tracking application',   '20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002', '["https://track.globex.io/auth"]',            'ACTIVE', now(), now()),
+                ('30000000-0000-0000-0000-000000000004', 'Globex Analytics Dashboard', 'Internal analytics and reporting tool',  '20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '["https://analytics.globex.io/callback"]',    'ACTIVE', now(), now()),
+                ('30000000-0000-0000-0000-000000000005', 'Initech ETL Pipeline',   'Data extraction and transformation service','20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000003', '["https://etl.initech.dev/hook"]',            'ACTIVE', now(), now()),
+                ('30000000-0000-0000-0000-000000000006', 'Dave Test App',          'Personal sandbox application',              '20000000-0000-0000-0000-000000000004', NULL, '["http://localhost:3000/callback"]', 'ACTIVE', now(), now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- API KEYS  (key_hash is sha256 of the plaintext — not real, just for seed)
+              -- ============================================================
+              INSERT INTO identity.api_keys (id, application_id, name, key_prefix, key_hash, status, created_at)
+              VALUES
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', 'Production Key',     'live_acme_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60001', 'ACTIVE', now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000002', 'Mobile Key',         'live_acme_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60002', 'ACTIVE', now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000003', 'Tracking Service',   'live_glbx_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60003', 'ACTIVE', now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000004', 'Analytics Key',      'live_glbx_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60004', 'ACTIVE', now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000005', 'ETL Pipeline Key',   'live_init_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60005', 'ACTIVE', now()),
+                (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', 'Dev Sandbox Key',    'test_dave_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60006', 'ACTIVE', now())
+              ON CONFLICT DO NOTHING;
+
+      rollback:
+        - sql:
+            sql: |
+              DELETE FROM identity.api_keys WHERE application_id IN (SELECT id FROM identity.applications WHERE id LIKE '30000000%');
+              DELETE FROM identity.applications WHERE id LIKE '30000000%';
+              DELETE FROM identity.role_assignments WHERE user_id LIKE '20000000%';
+              DELETE FROM identity.org_members WHERE user_id LIKE '20000000%';
+              DELETE FROM identity.user_profiles WHERE user_id LIKE '20000000%';
+              DELETE FROM identity.users WHERE id LIKE '20000000%';
+              DELETE FROM identity.organizations WHERE id LIKE '10000000%';

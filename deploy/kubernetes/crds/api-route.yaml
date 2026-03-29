@@ -1,0 +1,97 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: apiroutes.gateway.io
+spec:
+  group: gateway.io
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                apiRef:
+                  type: string
+                  description: "Reference to an ApiDefinition name"
+                path:
+                  type: string
+                methods:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - GET
+                      - POST
+                      - PUT
+                      - DELETE
+                      - PATCH
+                      - HEAD
+                      - OPTIONS
+                upstreamUrl:
+                  type: string
+                stripPrefix:
+                  type: boolean
+                  default: false
+                timeout:
+                  type: integer
+                  description: "Timeout in milliseconds"
+                  default: 30000
+                retries:
+                  type: integer
+                  default: 0
+                loadBalancer:
+                  type: string
+                  enum:
+                    - round-robin
+                    - weighted
+                    - least-connections
+                    - ip-hash
+                  default: round-robin
+                cors:
+                  type: object
+                  properties:
+                    allowedOrigins:
+                      type: array
+                      items:
+                        type: string
+                    allowedMethods:
+                      type: array
+                      items:
+                        type: string
+                    allowCredentials:
+                      type: boolean
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                message:
+                  type: string
+                lastReconciled:
+                  type: string
+                  format: date-time
+      additionalPrinterColumns:
+        - name: Path
+          type: string
+          jsonPath: .spec.path
+        - name: Upstream
+          type: string
+          jsonPath: .spec.upstreamUrl
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: apiroutes
+    singular: apiroute
+    kind: ApiRoute
+    shortNames:
+      - apirt

@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-035-add-maker-checker-columns
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: approval_requests
+            columns:
+              - column: { name: approval_level, type: int, defaultValueNumeric: 1 }
+              - column: { name: submitted_by, type: uuid }
+              - column: { name: current_level, type: int, defaultValueNumeric: 1 }
+              - column: { name: max_level, type: int, defaultValueNumeric: 1 }
+              - column: { name: cooldown_until, type: timestamptz }
+      rollback:
+        - dropColumn: { schemaName: gateway, tableName: approval_requests, columnName: cooldown_until }
+        - dropColumn: { schemaName: gateway, tableName: approval_requests, columnName: max_level }
+        - dropColumn: { schemaName: gateway, tableName: approval_requests, columnName: current_level }
+        - dropColumn: { schemaName: gateway, tableName: approval_requests, columnName: submitted_by }
+        - dropColumn: { schemaName: gateway, tableName: approval_requests, columnName: approval_level }

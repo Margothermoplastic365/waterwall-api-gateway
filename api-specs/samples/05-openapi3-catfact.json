@@ -1,0 +1,41 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Cat Facts API",
+    "description": "Free public API for cat facts at catfact.ninja — no auth required",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://catfact.ninja" }
+  ],
+  "paths": {
+    "/fact": {
+      "get": {
+        "summary": "Get a random cat fact",
+        "parameters": [
+          { "name": "max_length", "in": "query", "schema": { "type": "integer" }, "description": "Maximum length of returned fact" }
+        ],
+        "responses": { "200": { "description": "A random cat fact" } }
+      }
+    },
+    "/facts": {
+      "get": {
+        "summary": "Get a list of cat facts (paginated)",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": { "200": { "description": "Paginated cat facts" } }
+      }
+    },
+    "/breeds": {
+      "get": {
+        "summary": "Get a list of cat breeds (paginated)",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": { "200": { "description": "Cat breeds" } }
+      }
+    }
+  }
+}

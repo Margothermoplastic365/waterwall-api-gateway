@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-034-create-approval-chains
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: approval_chains
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_approval_chain_api, references: gateway.apis(id) } }
+              - column: { name: level, type: int, constraints: { nullable: false } }
+              - column: { name: required_permission, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: description, type: varchar(255) }
+        - addUniqueConstraint:
+            schemaName: gateway
+            tableName: approval_chains
+            constraintName: uk_approval_chain_api_level
+            columnNames: api_id, level
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: approval_chains }

@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-001-create-apis
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: apis
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: version, type: varchar(50), defaultValue: "1.0.0" }
+              - column: { name: description, type: text }
+              - column: { name: status, type: varchar(30), defaultValue: CREATED, constraints: { nullable: false } }
+              - column: { name: visibility, type: varchar(20), defaultValue: PUBLIC }
+              - column: { name: protocol_type, type: varchar(20), defaultValue: REST }
+              - column: { name: tags, type: jsonb }
+              - column: { name: category, type: varchar(100) }
+              - column: { name: org_id, type: uuid }
+              - column: { name: created_by, type: uuid }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+              - column: { name: updated_at, type: timestamptz, defaultValueComputed: now() }
+        - createIndex: { schemaName: gateway, tableName: apis, indexName: idx_apis_status, columns: [{ column: { name: status } }] }
+        - createIndex: { schemaName: gateway, tableName: apis, indexName: idx_apis_org, columns: [{ column: { name: org_id } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: apis }

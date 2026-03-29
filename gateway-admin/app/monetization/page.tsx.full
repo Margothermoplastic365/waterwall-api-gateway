@@ -1,0 +1,755 @@
+'use client';
+
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { DataTable, StatusBadge, FormModal, get, post, put, del } from '@gateway/shared-ui';
+import type { Column } from '@gateway/shared-ui';
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+type Tab = 'plans' | 'invoices' | 'revenue';
+
+interface PricingPlan {
+  id: string;
+  name: string;
+  pricingModel: string;
+  priceAmount: number;
+  currency: string;
+  billingPeriod: string;
+  includedRequests: number;
+  overageRate: number;
+  [key: string]: unknown;
+}
+
+interface Invoice {
+  id: string;
+  consumerName: string;
+  consumerId: string;
+  period: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  [key: string]: unknown;
+}
+
+interface Revenue {
+  totalRevenue: number;
+  mrr: number;
+  activeSubscriptions: number;
+  revenueByPlan: { planName: string; revenue: number }[];
+}
+
+interface ToastState {
+  message: string;
+  type: 'success' | 'error';
+}
+
+const PRICING_MODELS = ['FREE', 'FLAT_RATE', 'PAY_PER_USE', 'TIERED', 'FREEMIUM'] as const;
+const BILLING_PERIODS = ['MONTHLY', 'QUARTERLY', 'YEARLY'] as const;
+const REVENUE_PERIODS = ['monthly', 'quarterly', 'yearly'] as const;
+
+interface PlanFormState {
+  name: string;
+  pricingModel: string;
+  priceAmount: number;
+  currency: string;
+  billingPeriod: string;
+  includedRequests: number;
+  overageRate: number;
+}
+
+const emptyPlanForm: PlanFormState = {
+  name: '',
+  pricingModel: 'FREE',
+  priceAmount: 0,
+  currency: 'USD',
+  billingPeriod: 'MONTHLY',
+  includedRequests: 0,
+  overageRate: 0,
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helper: pricing model badge                                        */
+/* ------------------------------------------------------------------ */
+
+const MODEL_COLORS: Record<string, string> = {
+  FREE: 'bg-slate-100 text-slate-600',
+  FLAT_RATE: 'bg-blue-100 text-blue-700',
+  PAY_PER_USE: 'bg-amber-100 text-amber-700',
+  TIERED: 'bg-purple-100 text-purple-700',
+  FREEMIUM: 'bg-teal-100 text-teal-700',
+};
+
+function ModelBadge({ model }: { model: string }) {
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${MODEL_COLORS[model] || 'bg-slate-100 text-slate-600'}`}>
+      {model.replace('_', ' ')}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helper: unwrap paginated or array response                         */
+/* ------------------------------------------------------------------ */
+
+function unwrapList(data: unknown): unknown[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    const obj = data as { content?: unknown[]; data?: unknown[] };
+    if (Array.isArray(obj.content)) return obj.content;
+    if (Array.isArray(obj.data)) return obj.data;
+  }
+  return [];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page component                                                     */
+/* ------------------------------------------------------------------ */
+
+export default function MonetizationPage() {
+  const [tab, setTab] = useState<Tab>('plans');
+
+  /* Toast */
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  }, []);
+
+  /* ─── Plans state ─────────────────────────────────────────── */
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+
+  const [planModal, setPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
+  const [planForm, setPlanForm] = useState<PlanFormState>({ ...emptyPlanForm });
+  const [planSaving, setPlanSaving] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
+
+  /* ─── Invoices state ──────────────────────────────────────── */
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoiceConsumerFilter, setInvoiceConsumerFilter] = useState('');
+
+  const [generateModal, setGenerateModal] = useState(false);
+  const [generateForm, setGenerateForm] = useState({ consumerId: '', period: '' });
+  const [generating, setGenerating] = useState(false);
+
+  /* ─── Revenue state ───────────────────────────────────────── */
+  const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(false);
+  const [revenuePeriod, setRevenuePeriod] = useState('monthly');
+
+  /* ─── Data fetching ───────────────────────────────────────── */
+
+  const loadPlans = useCallback(() => {
+    setPlansLoading(true);
+    get<PricingPlan[]>('/v1/monetization/pricing-plans')
+      .then((data) => setPlans(unwrapList(data) as PricingPlan[]))
+      .catch(() => {
+        setPlans([]);
+        showToast('Failed to load pricing plans', 'error');
+      })
+      .finally(() => setPlansLoading(false));
+  }, [showToast]);
+
+  const loadInvoices = useCallback((consumerId?: string) => {
+    setInvoicesLoading(true);
+    const query = consumerId ? `?consumerId=${encodeURIComponent(consumerId)}` : '';
+    get<Invoice[]>(`/v1/monetization/invoices${query}`)
+      .then((data) => setInvoices(unwrapList(data) as Invoice[]))
+      .catch(() => {
+        setInvoices([]);
+        showToast('Failed to load invoices', 'error');
+      })
+      .finally(() => setInvoicesLoading(false));
+  }, [showToast]);
+
+  const loadRevenue = useCallback((period: string) => {
+    setRevenueLoading(true);
+    get<Revenue>(`/v1/monetization/revenue?period=${period}`)
+      .then((data) => setRevenue(data))
+      .catch(() => {
+        setRevenue(null);
+        showToast('Failed to load revenue data', 'error');
+      })
+      .finally(() => setRevenueLoading(false));
+  }, [showToast]);
+
+  useEffect(() => {
+    if (tab === 'plans') loadPlans();
+  }, [tab, loadPlans]);
+
+  useEffect(() => {
+    if (tab === 'invoices') loadInvoices(invoiceConsumerFilter || undefined);
+  }, [tab, loadInvoices, invoiceConsumerFilter]);
+
+  useEffect(() => {
+    if (tab === 'revenue') loadRevenue(revenuePeriod);
+  }, [tab, revenuePeriod, loadRevenue]);
+
+  /* ─── Plan CRUD ───────────────────────────────────────────── */
+
+  const openCreatePlan = useCallback(() => {
+    setEditingPlan(null);
+    setPlanForm({ ...emptyPlanForm });
+    setPlanModal(true);
+  }, []);
+
+  const openEditPlan = useCallback((plan: PricingPlan) => {
+    setEditingPlan(plan);
+    setPlanForm({
+      name: plan.name,
+      pricingModel: plan.pricingModel,
+      priceAmount: plan.priceAmount,
+      currency: plan.currency,
+      billingPeriod: plan.billingPeriod,
+      includedRequests: plan.includedRequests,
+      overageRate: plan.overageRate,
+    });
+    setPlanModal(true);
+  }, []);
+
+  const handleSavePlan = useCallback(async () => {
+    if (!planForm.name.trim()) {
+      showToast('Plan name is required', 'error');
+      return;
+    }
+    setPlanSaving(true);
+    try {
+      if (editingPlan) {
+        const updated = await put<PricingPlan>(`/v1/monetization/pricing-plans/${editingPlan.id}`, planForm);
+        setPlans((prev) => prev.map((p) => (p.id === editingPlan.id ? updated : p)));
+        showToast('Pricing plan updated successfully');
+      } else {
+        const created = await post<PricingPlan>('/v1/monetization/pricing-plans', planForm);
+        setPlans((prev) => [...prev, created]);
+        showToast('Pricing plan created successfully');
+      }
+      setPlanModal(false);
+      setEditingPlan(null);
+      setPlanForm({ ...emptyPlanForm });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      showToast(msg, 'error');
+    } finally {
+      setPlanSaving(false);
+    }
+  }, [planForm, editingPlan, showToast]);
+
+  const handleDeletePlan = useCallback(async (planId: string) => {
+    if (!confirm('Are you sure you want to delete this pricing plan?')) return;
+    setDeletingPlanId(planId);
+    try {
+      await del(`/v1/monetization/pricing-plans/${planId}`);
+      setPlans((prev) => prev.filter((p) => p.id !== planId));
+      showToast('Pricing plan deleted successfully');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete plan';
+      showToast(msg, 'error');
+    } finally {
+      setDeletingPlanId(null);
+    }
+  }, [showToast]);
+
+  /* ─── Invoice generation ──────────────────────────────────── */
+
+  const handleGenerateInvoice = useCallback(async () => {
+    if (!generateForm.consumerId.trim() || !generateForm.period.trim()) {
+      showToast('Consumer ID and period are required', 'error');
+      return;
+    }
+    setGenerating(true);
+    try {
+      await post('/v1/monetization/invoices/generate', {
+        consumerId: generateForm.consumerId.trim(),
+        period: generateForm.period.trim(),
+      });
+      showToast('Invoice generated successfully');
+      setGenerateModal(false);
+      setGenerateForm({ consumerId: '', period: '' });
+      // Reload invoices
+      loadInvoices(invoiceConsumerFilter || undefined);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to generate invoice';
+      showToast(msg, 'error');
+    } finally {
+      setGenerating(false);
+    }
+  }, [generateForm, showToast, loadInvoices, invoiceConsumerFilter]);
+
+  /* ─── Columns ─────────────────────────────────────────────── */
+
+  const planColumns = useMemo(
+    (): Column<PricingPlan>[] => [
+      { key: 'name', label: 'Name' },
+      { key: 'pricingModel', label: 'Model', render: (row) => <ModelBadge model={row.pricingModel} /> },
+      {
+        key: 'priceAmount',
+        label: 'Price',
+        render: (row) => (
+          <span className="font-semibold text-slate-900">
+            {row.currency} {row.priceAmount.toFixed(2)}
+          </span>
+        ),
+      },
+      { key: 'billingPeriod', label: 'Billing Period' },
+      {
+        key: 'includedRequests',
+        label: 'Included Requests',
+        render: (row) => (
+          <span className="text-sm text-slate-600">{row.includedRequests.toLocaleString()}</span>
+        ),
+      },
+      {
+        key: 'overageRate',
+        label: 'Overage Rate',
+        render: (row) => (
+          <span className="text-sm text-slate-600">
+            {row.overageRate > 0 ? `$${row.overageRate.toFixed(4)}/req` : '--'}
+          </span>
+        ),
+      },
+      {
+        key: 'id',
+        label: 'Actions',
+        render: (row) => (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openEditPlan(row)}
+              className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => handleDeletePlan(row.id)}
+              disabled={deletingPlanId === row.id}
+              className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {deletingPlanId === row.id ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [openEditPlan, handleDeletePlan, deletingPlanId],
+  );
+
+  const invoiceColumns = useMemo(
+    (): Column<Invoice>[] => [
+      { key: 'consumerName', label: 'Consumer' },
+      { key: 'period', label: 'Period' },
+      {
+        key: 'amount',
+        label: 'Amount',
+        render: (row) => (
+          <span className="font-semibold text-slate-900">
+            {row.currency || 'USD'} {row.amount.toFixed(2)}
+          </span>
+        ),
+      },
+      { key: 'status', label: 'Status', render: (row) => <StatusBadge status={row.status} size="sm" /> },
+      {
+        key: 'createdAt',
+        label: 'Created',
+        render: (row) => (
+          <span className="text-sm text-slate-500">{new Date(row.createdAt).toLocaleDateString()}</span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const tabs = [
+    { key: 'plans' as Tab, label: 'Pricing Plans' },
+    { key: 'invoices' as Tab, label: 'Invoices' },
+    { key: 'revenue' as Tab, label: 'Revenue' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Toast notification */}
+        {toast && (
+          <div
+            className={`fixed top-4 right-4 z-50 flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm max-w-sm ${
+              toast.type === 'error'
+                ? 'bg-red-50/95 border-red-200 text-red-800'
+                : 'bg-emerald-50/95 border-emerald-200 text-emerald-800'
+            }`}
+          >
+            {toast.type === 'error' ? (
+              <svg className="w-5 h-5 shrink-0 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 shrink-0 text-emerald-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <div className="flex-1">
+              <p className="text-sm font-medium">{toast.message}</p>
+            </div>
+            <button onClick={() => setToast(null)} className="shrink-0 text-current opacity-50 hover:opacity-100">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Monetization</h1>
+            <p className="mt-1 text-sm text-slate-500">Pricing plans, invoices, and revenue analytics</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+            {tab === 'plans' && (
+              <button
+                className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition-all duration-200"
+                onClick={openCreatePlan}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Plan
+              </button>
+            )}
+            {tab === 'invoices' && (
+              <button
+                className="inline-flex items-center px-4 py-2.5 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition-all duration-200"
+                onClick={() => setGenerateModal(true)}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Generate Invoice
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+          {tabs.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                tab === key
+                  ? 'bg-white text-purple-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Plans Tab ─────────────────────────────────────────── */}
+        {tab === 'plans' && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <DataTable data={plans} columns={planColumns} loading={plansLoading} />
+          </div>
+        )}
+
+        {/* ── Invoices Tab ──────────────────────────────────────── */}
+        {tab === 'invoices' && (
+          <div className="space-y-4">
+            {/* Filter toolbar */}
+            <div className="flex flex-wrap items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Filter by consumer ID..."
+                  value={invoiceConsumerFilter}
+                  onChange={(e) => setInvoiceConsumerFilter(e.target.value)}
+                  className="pl-9 pr-3 py-2 w-64 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                />
+              </div>
+              {invoiceConsumerFilter && (
+                <button
+                  onClick={() => setInvoiceConsumerFilter('')}
+                  className="text-xs text-slate-500 hover:text-slate-700 underline"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <DataTable data={invoices} columns={invoiceColumns} loading={invoicesLoading} />
+            </div>
+          </div>
+        )}
+
+        {/* ── Revenue Tab ───────────────────────────────────────── */}
+        {tab === 'revenue' && (
+          <>
+            {/* Period selector */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-slate-600">Period:</label>
+              <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+                {REVENUE_PERIODS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setRevenuePeriod(p)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      revenuePeriod === p
+                        ? 'bg-white text-purple-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {revenueLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-slate-200 p-5">
+                    <div className="h-4 w-24 bg-slate-100 rounded animate-pulse mb-3" />
+                    <div className="h-8 w-32 bg-slate-200 rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : revenue ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Revenue</p>
+                        <p className="mt-1 text-2xl font-bold text-slate-900">{'$'}{revenue.totalRevenue.toLocaleString()}</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-green-100 text-green-600 flex items-center justify-center">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">MRR</p>
+                        <p className="mt-1 text-2xl font-bold text-slate-900">{'$'}{revenue.mrr.toLocaleString()}</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Active Subscriptions</p>
+                        <p className="mt-1 text-2xl font-bold text-slate-900">{revenue.activeSubscriptions}</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue by Plan */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                  <h3 className="text-base font-semibold text-slate-900 mb-4">Revenue by Plan</h3>
+                  {revenue.revenueByPlan && revenue.revenueByPlan.length > 0 ? (
+                    <div className="space-y-3">
+                      {revenue.revenueByPlan.map((item, i) => {
+                        const maxRevenue = Math.max(...revenue.revenueByPlan.map((r) => r.revenue), 1);
+                        const pct = (item.revenue / maxRevenue) * 100;
+                        return (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-slate-700">{item.planName}</span>
+                              <span className="font-semibold text-slate-900">{'$'}{item.revenue.toLocaleString()}</span>
+                            </div>
+                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
+                        <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-slate-500">No revenue data available yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-slate-500">Failed to load revenue data.</p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Create / Edit Plan Modal ──────────────────────────── */}
+        <FormModal
+          open={planModal}
+          onClose={() => {
+            setPlanModal(false);
+            setEditingPlan(null);
+            setPlanForm({ ...emptyPlanForm });
+          }}
+          title={editingPlan ? 'Edit Pricing Plan' : 'Create Pricing Plan'}
+          onSubmit={handleSavePlan}
+          submitLabel={editingPlan ? 'Save Changes' : 'Create Plan'}
+          loading={planSaving}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={planForm.name}
+                onChange={(e) => setPlanForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Pro Plan"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">Pricing Model</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={planForm.pricingModel}
+                onChange={(e) => setPlanForm((f) => ({ ...f, pricingModel: e.target.value }))}
+              >
+                {PRICING_MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {m.replace('_', ' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-slate-700">Price</label>
+                <input
+                  type="number"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                  value={planForm.priceAmount}
+                  onChange={(e) => setPlanForm((f) => ({ ...f, priceAmount: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-slate-700">Currency</label>
+                <input
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                  value={planForm.currency}
+                  onChange={(e) => setPlanForm((f) => ({ ...f, currency: e.target.value }))}
+                  placeholder="USD"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">Billing Period</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={planForm.billingPeriod}
+                onChange={(e) => setPlanForm((f) => ({ ...f, billingPeriod: e.target.value }))}
+              >
+                {BILLING_PERIODS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">Included Requests</label>
+              <input
+                type="number"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={planForm.includedRequests}
+                onChange={(e) => setPlanForm((f) => ({ ...f, includedRequests: parseInt(e.target.value) || 0 }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">Overage Rate (per request)</label>
+              <input
+                type="number"
+                step="0.001"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={planForm.overageRate}
+                onChange={(e) => setPlanForm((f) => ({ ...f, overageRate: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
+          </div>
+        </FormModal>
+
+        {/* ── Generate Invoice Modal ────────────────────────────── */}
+        <FormModal
+          open={generateModal}
+          onClose={() => {
+            setGenerateModal(false);
+            setGenerateForm({ consumerId: '', period: '' });
+          }}
+          title="Generate Invoice"
+          onSubmit={handleGenerateInvoice}
+          submitLabel={generating ? 'Generating...' : 'Generate'}
+          loading={generating}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">
+                Consumer ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={generateForm.consumerId}
+                onChange={(e) => setGenerateForm((f) => ({ ...f, consumerId: e.target.value }))}
+                placeholder="e.g. consumer-abc-123"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">
+                Period <span className="text-red-500">*</span>
+              </label>
+              <input
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
+                value={generateForm.period}
+                onChange={(e) => setGenerateForm((f) => ({ ...f, period: e.target.value }))}
+                placeholder="e.g. 2026-03"
+              />
+            </div>
+          </div>
+        </FormModal>
+      </div>
+    </div>
+  );
+}

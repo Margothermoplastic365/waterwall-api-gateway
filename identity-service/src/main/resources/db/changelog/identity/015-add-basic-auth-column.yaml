@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-basic-auth-column
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: identity
+            tableName: applications
+            columns:
+              - column:
+                  name: basic_auth_secret_hash
+                  type: varchar(255)
+      rollback:
+        - dropColumn:
+            schemaName: identity
+            tableName: applications
+            columnName: basic_auth_secret_hash

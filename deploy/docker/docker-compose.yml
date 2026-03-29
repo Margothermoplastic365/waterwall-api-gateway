@@ -1,0 +1,256 @@
+version: '3.8'
+
+services:
+  # ============ INFRASTRUCTURE ============
+  postgres:
+    image: postgres:16-alpine
+    container_name: gateway-postgres
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-gateway}
+      POSTGRES_USER: ${DB_USERNAME:-gateway}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gateway}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-schemas.sql:/docker-entrypoint-initdb.d/01-init-schemas.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-gateway}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - gateway-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: gateway-rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/cem}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - gateway-network
+
+  # ============ BACKEND SERVICES ============
+  identity-service:
+    build:
+      context: ../../identity-service
+      dockerfile: Dockerfile
+    container_name: gateway-identity
+    ports:
+      - "8081:8081"
+    environment:
+      GATEWAY_ENV: ${GATEWAY_ENV:-dev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-gateway}
+      DB_USERNAME: ${DB_USERNAME:-gateway}
+      DB_PASSWORD: ${DB_PASSWORD:-gateway}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      JWT_ISSUER_URI: http://identity-service:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - gateway-network
+
+  management-api:
+    build:
+      context: ../../management-api
+      dockerfile: Dockerfile
+    container_name: gateway-management
+    ports:
+      - "8082:8082"
+    environment:
+      GATEWAY_ENV: ${GATEWAY_ENV:-dev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-gateway}
+      DB_USERNAME: ${DB_USERNAME:-gateway}
+      DB_PASSWORD: ${DB_PASSWORD:-gateway}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - gateway-network
+
+  gateway-runtime:
+    build:
+      context: ../../gateway-runtime
+      dockerfile: Dockerfile
+    container_name: gateway-runtime
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      GATEWAY_ENV: ${GATEWAY_ENV:-dev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-gateway}
+      DB_USERNAME: ${DB_USERNAME:-gateway}
+      DB_PASSWORD: ${DB_PASSWORD:-gateway}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      GRPC_PORT: 9090
+    depends_on:
+      identity-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - gateway-network
+
+  analytics-service:
+    build:
+      context: ../../analytics-service
+      dockerfile: Dockerfile
+    container_name: gateway-analytics
+    ports:
+      - "8083:8083"
+    environment:
+      GATEWAY_ENV: ${GATEWAY_ENV:-dev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-gateway}
+      DB_USERNAME: ${DB_USERNAME:-gateway}
+      DB_PASSWORD: ${DB_PASSWORD:-gateway}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - gateway-network
+
+  notification-service:
+    build:
+      context: ../../notification-service
+      dockerfile: Dockerfile
+    container_name: gateway-notification
+    ports:
+      - "8084:8084"
+    environment:
+      GATEWAY_ENV: ${GATEWAY_ENV:-dev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-gateway}
+      DB_USERNAME: ${DB_USERNAME:-gateway}
+      DB_PASSWORD: ${DB_PASSWORD:-gateway}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - gateway-network
+
+  # ============ FRONTEND ============
+  gateway-portal:
+    build:
+      context: ../../gateway-portal
+      dockerfile: Dockerfile
+    container_name: gateway-portal
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://management-api:8082
+      NEXT_PUBLIC_IDENTITY_URL: http://identity-service:8081
+      NEXT_PUBLIC_GATEWAY_URL: http://gateway-runtime:8080
+    depends_on:
+      management-api:
+        condition: service_healthy
+    networks:
+      - gateway-network
+
+  gateway-admin:
+    build:
+      context: ../../gateway-admin
+      dockerfile: Dockerfile
+    container_name: gateway-admin
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://management-api:8082
+      NEXT_PUBLIC_IDENTITY_URL: http://identity-service:8081
+      PORT: 3001
+    depends_on:
+      management-api:
+        condition: service_healthy
+    networks:
+      - gateway-network
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+
+networks:
+  gateway-network:
+    driver: bridge

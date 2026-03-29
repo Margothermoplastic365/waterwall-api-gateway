@@ -1,0 +1,91 @@
+databaseChangeLog:
+  - changeSet:
+      id: an-004-create-audit-events-all
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: analytics
+            tableName: audit_events_all
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: event_id
+                  type: varchar(50)
+              - column:
+                  name: actor_id
+                  type: uuid
+              - column:
+                  name: actor_email
+                  type: varchar(255)
+              - column:
+                  name: actor_ip
+                  type: varchar(45)
+              - column:
+                  name: action
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource_type
+                  type: varchar(50)
+              - column:
+                  name: resource_id
+                  type: varchar(255)
+              - column:
+                  name: before_state
+                  type: jsonb
+              - column:
+                  name: after_state
+                  type: jsonb
+              - column:
+                  name: result
+                  type: varchar(20)
+              - column:
+                  name: trace_id
+                  type: varchar(100)
+              - column:
+                  name: source_service
+                  type: varchar(100)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            schemaName: analytics
+            tableName: audit_events_all
+            indexName: idx_audit_all_actor
+            columns:
+              - column:
+                  name: actor_id
+        - createIndex:
+            schemaName: analytics
+            tableName: audit_events_all
+            indexName: idx_audit_all_action
+            columns:
+              - column:
+                  name: action
+        - createIndex:
+            schemaName: analytics
+            tableName: audit_events_all
+            indexName: idx_audit_all_resource_type
+            columns:
+              - column:
+                  name: resource_type
+        - createIndex:
+            schemaName: analytics
+            tableName: audit_events_all
+            indexName: idx_audit_all_created
+            columns:
+              - column:
+                  name: created_at
+      rollback:
+        - dropTable:
+            schemaName: analytics
+            tableName: audit_events_all

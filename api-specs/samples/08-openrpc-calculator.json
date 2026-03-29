@@ -1,0 +1,78 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "Calculator JSON-RPC Service",
+    "description": "A simple calculator API using JSON-RPC 2.0 protocol",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://calc.example.com/rpc" }
+  ],
+  "methods": [
+    {
+      "name": "add",
+      "summary": "Add two numbers",
+      "params": [
+        { "name": "a", "required": true, "schema": { "type": "number" } },
+        { "name": "b", "required": true, "schema": { "type": "number" } }
+      ],
+      "result": {
+        "name": "sum",
+        "schema": { "type": "number" }
+      }
+    },
+    {
+      "name": "subtract",
+      "summary": "Subtract b from a",
+      "params": [
+        { "name": "a", "required": true, "schema": { "type": "number" } },
+        { "name": "b", "required": true, "schema": { "type": "number" } }
+      ],
+      "result": {
+        "name": "difference",
+        "schema": { "type": "number" }
+      }
+    },
+    {
+      "name": "multiply",
+      "summary": "Multiply two numbers",
+      "params": [
+        { "name": "a", "required": true, "schema": { "type": "number" } },
+        { "name": "b", "required": true, "schema": { "type": "number" } }
+      ],
+      "result": {
+        "name": "product",
+        "schema": { "type": "number" }
+      }
+    },
+    {
+      "name": "divide",
+      "summary": "Divide a by b",
+      "params": [
+        { "name": "a", "required": true, "schema": { "type": "number" } },
+        { "name": "b", "required": true, "schema": { "type": "number" } }
+      ],
+      "result": {
+        "name": "quotient",
+        "schema": { "type": "number" }
+      },
+      "errors": [
+        {
+          "code": -32602,
+          "message": "Division by zero"
+        }
+      ]
+    },
+    {
+      "name": "sqrt",
+      "summary": "Square root of a number",
+      "params": [
+        { "name": "value", "required": true, "schema": { "type": "number" } }
+      ],
+      "result": {
+        "name": "result",
+        "schema": { "type": "number" }
+      }
+    }
+  ]
+}

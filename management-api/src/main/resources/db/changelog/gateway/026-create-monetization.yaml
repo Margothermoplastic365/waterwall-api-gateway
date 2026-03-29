@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-026-create-pricing-plans
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: pricing_plans
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: pricing_model, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: price_amount, type: "decimal(12,2)" }
+              - column: { name: currency, type: varchar(10), defaultValue: "USD" }
+              - column: { name: billing_period, type: varchar(50) }
+              - column: { name: included_requests, type: bigint }
+              - column: { name: overage_rate, type: "decimal(10,6)" }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-026-create-invoices
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: invoices
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: consumer_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: billing_period_start, type: date, constraints: { nullable: false } }
+              - column: { name: billing_period_end, type: date, constraints: { nullable: false } }
+              - column: { name: total_amount, type: "decimal(12,2)", constraints: { nullable: false } }
+              - column: { name: currency, type: varchar(10), defaultValue: "USD" }
+              - column: { name: status, type: varchar(50), defaultValue: "DRAFT" }
+              - column: { name: line_items, type: jsonb }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-026-create-payment-methods
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: payment_methods
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: consumer_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: provider, type: varchar(100) }
+              - column: { name: provider_ref, type: varchar(500) }
+              - column: { name: is_default, type: boolean, defaultValueBoolean: false }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }

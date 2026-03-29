@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-role-assignments
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: role_assignments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_roleassign_user
+                    references: identity.users(id)
+                    deleteCascade: true
+              - column:
+                  name: role_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_roleassign_role
+                    references: identity.roles(id)
+                    deleteCascade: true
+              - column:
+                  name: scope_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope_id
+                  type: uuid
+              - column:
+                  name: expires_at
+                  type: timestamptz
+              - column:
+                  name: assigned_by
+                  type: uuid
+              - column:
+                  name: assigned_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+        - createIndex:
+            schemaName: identity
+            tableName: role_assignments
+            indexName: idx_roleassign_user
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            schemaName: identity
+            tableName: role_assignments
+            indexName: idx_roleassign_scope
+            columns:
+              - column:
+                  name: scope_type
+              - column:
+                  name: scope_id
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: role_assignments

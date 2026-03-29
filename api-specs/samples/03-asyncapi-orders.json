@@ -1,0 +1,96 @@
+{
+  "asyncapi": "2.6.0",
+  "info": {
+    "title": "Order Events API",
+    "description": "Real-time order lifecycle events via Kafka",
+    "version": "1.0.0"
+  },
+  "servers": {
+    "production": {
+      "url": "kafka://broker.orders.example.com:9092",
+      "protocol": "kafka",
+      "description": "Production Kafka cluster"
+    }
+  },
+  "channels": {
+    "orders.created": {
+      "description": "Emitted when a new order is placed",
+      "subscribe": {
+        "summary": "Receive new order events",
+        "message": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "orderId": { "type": "string", "format": "uuid" },
+              "customerId": { "type": "string" },
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } },
+              "total": { "type": "number" },
+              "createdAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "orders.shipped": {
+      "description": "Emitted when an order is shipped",
+      "subscribe": {
+        "summary": "Receive shipment events",
+        "message": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "orderId": { "type": "string" },
+              "trackingNumber": { "type": "string" },
+              "carrier": { "type": "string" },
+              "shippedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "orders.completed": {
+      "description": "Emitted when an order is delivered and confirmed",
+      "subscribe": {
+        "summary": "Receive completion events",
+        "message": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "orderId": { "type": "string" },
+              "deliveredAt": { "type": "string", "format": "date-time" },
+              "rating": { "type": "integer", "minimum": 1, "maximum": 5 }
+            }
+          }
+        }
+      }
+    },
+    "orders.cancelled": {
+      "description": "Emitted when an order is cancelled",
+      "publish": {
+        "summary": "Request order cancellation",
+        "message": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "orderId": { "type": "string" },
+              "reason": { "type": "string" },
+              "cancelledBy": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "productId": { "type": "string" },
+          "quantity": { "type": "integer" },
+          "unitPrice": { "type": "number" }
+        }
+      }
+    }
+  }
+}

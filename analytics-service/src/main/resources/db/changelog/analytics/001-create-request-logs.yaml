@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: an-001-create-request-logs
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: analytics
+            tableName: request_logs
+            columns:
+              - column: { name: id, type: bigint, autoIncrement: true, constraints: { primaryKey: true } }
+              - column: { name: trace_id, type: varchar(100) }
+              - column: { name: api_id, type: uuid }
+              - column: { name: route_id, type: uuid }
+              - column: { name: consumer_id, type: uuid }
+              - column: { name: application_id, type: uuid }
+              - column: { name: method, type: varchar(10) }
+              - column: { name: path, type: varchar(500) }
+              - column: { name: status_code, type: int }
+              - column: { name: latency_ms, type: int }
+              - column: { name: request_size, type: bigint }
+              - column: { name: response_size, type: bigint }
+              - column: { name: auth_type, type: varchar(20) }
+              - column: { name: client_ip, type: varchar(45) }
+              - column: { name: user_agent, type: varchar(500) }
+              - column: { name: error_code, type: varchar(20) }
+              - column: { name: gateway_node, type: varchar(100) }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now(), constraints: { nullable: false } }
+        - createIndex: { schemaName: analytics, tableName: request_logs, indexName: idx_reqlog_created, columns: [{ column: { name: created_at } }] }
+        - createIndex: { schemaName: analytics, tableName: request_logs, indexName: idx_reqlog_api, columns: [{ column: { name: api_id } }] }
+      rollback:
+        - dropTable: { schemaName: analytics, tableName: request_logs }

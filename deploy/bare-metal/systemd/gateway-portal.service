@@ -1,0 +1,20 @@
+[Unit]
+Description=API Gateway Portal (Next.js - Developer Facing)
+After=network.target management-api.service
+
+[Service]
+Type=simple
+User=gateway
+Group=gateway
+WorkingDirectory=/opt/gateway/portal
+ExecStart=/usr/bin/node server.js
+EnvironmentFile=/etc/gateway/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

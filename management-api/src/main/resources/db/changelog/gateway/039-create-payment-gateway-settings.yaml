@@ -1,0 +1,94 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-039-create-payment-gateway-settings
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: payment_gateway_settings
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: provider
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: display_name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enabled
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: environment
+                  type: varchar(20)
+                  defaultValue: "test"
+              - column:
+                  name: secret_key
+                  type: varchar(500)
+              - column:
+                  name: public_key
+                  type: varchar(500)
+              - column:
+                  name: base_url
+                  type: varchar(500)
+              - column:
+                  name: callback_url
+                  type: varchar(500)
+              - column:
+                  name: webhook_url
+                  type: varchar(500)
+              - column:
+                  name: supported_currencies
+                  type: varchar(500)
+                  defaultValue: "NGN,USD,GHS,ZAR,KES"
+              - column:
+                  name: extra_config
+                  type: jsonb
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+  - changeSet:
+      id: gw-039-seed-paystack-settings
+      author: gateway-team
+      changes:
+        - insert:
+            schemaName: gateway
+            tableName: payment_gateway_settings
+            columns:
+              - column:
+                  name: provider
+                  value: "paystack"
+              - column:
+                  name: display_name
+                  value: "Paystack"
+              - column:
+                  name: enabled
+                  valueBoolean: false
+              - column:
+                  name: environment
+                  value: "test"
+              - column:
+                  name: base_url
+                  value: "https://api.paystack.co"
+              - column:
+                  name: callback_url
+                  value: "http://localhost:3000/billing?verify=true"
+              - column:
+                  name: supported_currencies
+                  value: "NGN,USD,GHS,ZAR,KES"

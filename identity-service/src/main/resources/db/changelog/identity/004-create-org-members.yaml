@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-org-members
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: identity
+            tableName: org_members
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_orgmember_user
+                    references: identity.users(id)
+                    deleteCascade: true
+              - column:
+                  name: org_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_orgmember_org
+                    references: identity.organizations(id)
+                    deleteCascade: true
+              - column:
+                  name: org_role
+                  type: varchar(50)
+                  defaultValue: MEMBER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: joined_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+        - addUniqueConstraint:
+            schemaName: identity
+            tableName: org_members
+            columnNames: user_id, org_id
+            constraintName: uq_org_member
+      rollback:
+        - dropTable:
+            schemaName: identity
+            tableName: org_members

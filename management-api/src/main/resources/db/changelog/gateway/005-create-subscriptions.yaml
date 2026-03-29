@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-005-create-subscriptions
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: subscriptions
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: application_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: api_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_sub_api, references: gateway.apis(id) } }
+              - column: { name: plan_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_sub_plan, references: gateway.plans(id) } }
+              - column: { name: status, type: varchar(20), defaultValue: APPROVED }
+              - column: { name: approved_at, type: timestamptz }
+              - column: { name: expires_at, type: timestamptz }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+        - addUniqueConstraint: { schemaName: gateway, tableName: subscriptions, columnNames: "application_id, api_id", constraintName: uq_sub_app_api }
+        - createIndex: { schemaName: gateway, tableName: subscriptions, indexName: idx_sub_app, columns: [{ column: { name: application_id } }] }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: subscriptions }

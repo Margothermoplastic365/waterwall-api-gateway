@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-016-create-api-templates
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: api_templates
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: template_content, type: text }
+              - column: { name: template_type, type: varchar(50) }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+        - createTable:
+            schemaName: gateway
+            tableName: shared_flows
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: policy_chain, type: jsonb }
+              - column: { name: scope, type: varchar(50) }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+
+  - changeSet:
+      id: gw-016-seed-api-templates
+      author: gateway-team
+      changes:
+        - insert:
+            schemaName: gateway
+            tableName: api_templates
+            columns:
+              - column: { name: id, valueComputed: gen_random_uuid() }
+              - column: { name: name, value: "CRUD REST API" }
+              - column: { name: description, value: "Standard RESTful CRUD API template with pagination, filtering, and error handling" }
+              - column: { name: template_type, value: "CRUD_REST" }
+              - column: { name: template_content, value: '{"openapi":"3.0.3","info":{"title":"{{apiName}}","version":"1.0.0","description":"CRUD REST API"},"paths":{"/{{resourcePlural}}":{  "get":{"operationId":"list","summary":"List resources","responses":{"200":{"description":"OK"},"500":{"description":"Server Error"}}},"post":{"operationId":"create","summary":"Create resource","responses":{"201":{"description":"Created"},"400":{"description":"Bad Request"},"500":{"description":"Server Error"}}}},"/{{resourcePlural}}/{id}":{"get":{"operationId":"getById","summary":"Get by ID","responses":{"200":{"description":"OK"},"404":{"description":"Not Found"}}},"put":{"operationId":"update","summary":"Update resource","responses":{"200":{"description":"OK"},"404":{"description":"Not Found"}}},"delete":{"operationId":"delete","summary":"Delete resource","responses":{"204":{"description":"Deleted"},"404":{"description":"Not Found"}}}}},"components":{"securitySchemes":{"bearerAuth":{"type":"http","scheme":"bearer","bearerFormat":"JWT"}}},"security":[{"bearerAuth":[]}]}' }
+        - insert:
+            schemaName: gateway
+            tableName: api_templates
+            columns:
+              - column: { name: id, valueComputed: gen_random_uuid() }
+              - column: { name: name, value: "Event-Driven API" }
+              - column: { name: description, value: "AsyncAPI-style event-driven API with webhooks and streaming endpoints" }
+              - column: { name: template_type, value: "EVENT_DRIVEN" }
+              - column: { name: template_content, value: '{"openapi":"3.0.3","info":{"title":"{{apiName}}","version":"1.0.0","description":"Event-Driven API"},"paths":{"/events":{"get":{"operationId":"streamEvents","summary":"Stream events via SSE","responses":{"200":{"description":"Event stream"}}}},"/webhooks":{"post":{"operationId":"registerWebhook","summary":"Register webhook","responses":{"201":{"description":"Webhook registered"},"400":{"description":"Bad Request"}}}},"/webhooks/{id}":{"delete":{"operationId":"removeWebhook","summary":"Remove webhook","responses":{"204":{"description":"Removed"}}}}},"components":{"securitySchemes":{"bearerAuth":{"type":"http","scheme":"bearer","bearerFormat":"JWT"}}},"security":[{"bearerAuth":[]}]}' }
+        - insert:
+            schemaName: gateway
+            tableName: api_templates
+            columns:
+              - column: { name: id, valueComputed: gen_random_uuid() }
+              - column: { name: name, value: "GraphQL API" }
+              - column: { name: description, value: "GraphQL API template with query and mutation endpoints" }
+              - column: { name: template_type, value: "GRAPHQL" }
+              - column: { name: template_content, value: '{"openapi":"3.0.3","info":{"title":"{{apiName}}","version":"1.0.0","description":"GraphQL API"},"paths":{"/graphql":{"post":{"operationId":"graphqlQuery","summary":"Execute GraphQL query or mutation","requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{"query":{"type":"string"},"variables":{"type":"object"}}}}}},"responses":{"200":{"description":"GraphQL response"},"400":{"description":"Bad Request"}}}}},"components":{"securitySchemes":{"bearerAuth":{"type":"http","scheme":"bearer","bearerFormat":"JWT"}}},"security":[{"bearerAuth":[]}]}' }
+        - insert:
+            schemaName: gateway
+            tableName: api_templates
+            columns:
+              - column: { name: id, valueComputed: gen_random_uuid() }
+              - column: { name: name, value: "gRPC API" }
+              - column: { name: description, value: "gRPC-transcoded REST API template with protobuf definitions" }
+              - column: { name: template_type, value: "GRPC" }
+              - column: { name: template_content, value: '{"openapi":"3.0.3","info":{"title":"{{apiName}}","version":"1.0.0","description":"gRPC-transcoded REST API"},"paths":{"/api/v1/{{serviceName}}/{method}":{"post":{"operationId":"invokeMethod","summary":"Invoke gRPC method via REST transcoding","requestBody":{"content":{"application/json":{"schema":{"type":"object"}}}},"responses":{"200":{"description":"gRPC response"},"400":{"description":"Bad Request"},"500":{"description":"Server Error"}}}}},"components":{"securitySchemes":{"bearerAuth":{"type":"http","scheme":"bearer","bearerFormat":"JWT"}}},"security":[{"bearerAuth":[]}]}' }

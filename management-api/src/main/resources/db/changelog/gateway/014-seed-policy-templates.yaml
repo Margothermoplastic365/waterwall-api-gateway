@@ -1,0 +1,120 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-seed-policy-templates
+      author: gateway-team
+      context: dev,uat
+      changes:
+        - insert:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: name
+                  value: "Standard Rate Limit"
+              - column:
+                  name: type
+                  value: "RATE_LIMIT"
+              - column:
+                  name: config
+                  value: '{"requestsPerMinute":100,"enforcement":"SOFT"}'
+              - column:
+                  name: description
+                  value: "Standard rate limiting policy with soft enforcement at 100 req/min"
+              - column:
+                  name: version
+                  valueNumeric: 1
+
+        - insert:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: name
+                  value: "Strict Rate Limit"
+              - column:
+                  name: type
+                  value: "RATE_LIMIT"
+              - column:
+                  name: config
+                  value: '{"requestsPerMinute":50,"enforcement":"STRICT"}'
+              - column:
+                  name: description
+                  value: "Strict rate limiting policy with hard enforcement at 50 req/min"
+              - column:
+                  name: version
+                  valueNumeric: 1
+
+        - insert:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: name
+                  value: "Public CORS"
+              - column:
+                  name: type
+                  value: "CORS"
+              - column:
+                  name: config
+                  value: '{"allowedOrigins":["*"],"allowedMethods":["GET","POST"]}'
+              - column:
+                  name: description
+                  value: "Public CORS policy allowing all origins with GET and POST methods"
+              - column:
+                  name: version
+                  valueNumeric: 1
+
+        - insert:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: name
+                  value: "Internal Only"
+              - column:
+                  name: type
+                  value: "IP_FILTER"
+              - column:
+                  name: config
+                  value: '{"whitelist":["10.0.0.0/8","172.16.0.0/12"]}'
+              - column:
+                  name: description
+                  value: "IP filter policy restricting access to internal network ranges"
+              - column:
+                  name: version
+                  valueNumeric: 1
+
+        - insert:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column:
+                  name: id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: name
+                  value: "Response Cache 5m"
+              - column:
+                  name: type
+                  value: "CACHE"
+              - column:
+                  name: config
+                  value: '{"enabled":true,"ttlSeconds":300}'
+              - column:
+                  name: description
+                  value: "Response caching policy with 5-minute TTL"
+              - column:
+                  name: version
+                  valueNumeric: 1

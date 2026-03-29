@@ -1,0 +1,96 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: analytics-service
+  threads:
+    virtual:
+      enabled: true
+  profiles:
+    active: ${GATEWAY_ENV:dev}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:gateway}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+      schema: analytics
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: analytics
+        format_sql: false
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:db/changelog/analytics/master.yaml
+    default-schema: analytics
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/cem}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8081}
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  mail:
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+          from: ${MAIL_FROM:noreply@example.com}
+
+gateway:
+  analytics:
+    audit:
+      retention-days: ${AUDIT_RETENTION_DAYS:90}
+  reports:
+    daily:
+      enabled: true
+      recipients: admin@gateway.local
+    weekly:
+      enabled: true
+      recipients: admin@gateway.local
+    monthly:
+      enabled: true
+      recipients: admin@gateway.local
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false

@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-003-create-policies
+      author: gateway-team
+      changes:
+        - createTable:
+            schemaName: gateway
+            tableName: policies
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: name, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: type, type: varchar(50), constraints: { nullable: false } }
+              - column: { name: config, type: jsonb, constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: created_at, type: timestamptz, defaultValueComputed: now() }
+        - createTable:
+            schemaName: gateway
+            tableName: policy_attachments
+            columns:
+              - column: { name: id, type: uuid, defaultValueComputed: gen_random_uuid(), constraints: { primaryKey: true } }
+              - column: { name: policy_id, type: uuid, constraints: { nullable: false, foreignKeyName: fk_policyattach_policy, references: gateway.policies(id) } }
+              - column: { name: api_id, type: uuid, constraints: { foreignKeyName: fk_policyattach_api, references: gateway.apis(id) } }
+              - column: { name: route_id, type: uuid, constraints: { foreignKeyName: fk_policyattach_route, references: gateway.routes(id) } }
+              - column: { name: scope, type: varchar(20), defaultValue: API }
+              - column: { name: priority, type: int, defaultValueNumeric: 0 }
+      rollback:
+        - dropTable: { schemaName: gateway, tableName: policy_attachments }
+        - dropTable: { schemaName: gateway, tableName: policies }

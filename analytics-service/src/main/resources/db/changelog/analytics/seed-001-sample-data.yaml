@@ -1,0 +1,98 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-001-sample-analytics
+      author: gateway-team
+      context: dev,uat
+      comment: "Seed sample alert rules and historical metrics for development"
+      changes:
+        - sql:
+            sql: |
+              -- ============================================================
+              -- ALERT RULES
+              -- ============================================================
+              INSERT INTO analytics.alert_rules (id, name, metric, condition, threshold, window_minutes, api_id, enabled, channels, created_at)
+              VALUES
+                (gen_random_uuid(), 'High Error Rate — Payment API',      'error_rate',       'GT',  5.0,   5,  '60000000-0000-0000-0000-000000000001', true,  '["email","slack"]',  now()),
+                (gen_random_uuid(), 'High Latency — Payment API',         'latency_p99',      'GT',  2000,  5,  '60000000-0000-0000-0000-000000000001', true,  '["email","slack"]',  now()),
+                (gen_random_uuid(), 'High Error Rate — Shipping API',     'error_rate',       'GT',  10.0,  5,  '60000000-0000-0000-0000-000000000002', true,  '["email"]',          now()),
+                (gen_random_uuid(), 'Traffic Spike — Weather API',        'requests_per_min', 'GT',  5000,  1,  '60000000-0000-0000-0000-000000000004', true,  '["slack"]',          now()),
+                (gen_random_uuid(), 'Global Error Rate',                  'error_rate',       'GT',  3.0,   10, NULL,                                   true,  '["email","slack","webhook"]', now()),
+                (gen_random_uuid(), 'Global High Latency',                'latency_p99',      'GT',  5000,  5,  NULL,                                   true,  '["email","slack"]',  now())
+              ON CONFLICT DO NOTHING;
+
+              -- ============================================================
+              -- SAMPLE DAILY METRICS (last 14 days for each API)
+              -- ============================================================
+              INSERT INTO analytics.metrics_1d (api_id, window_start, request_count, error_count, latency_sum_ms, latency_max_ms)
+              SELECT
+                api_id,
+                d::date AS window_start,
+                base_req + (random() * variance)::int AS request_count,
+                ((base_req + (random() * variance)::int) * err_rate)::int AS error_count,
+                ((base_req + (random() * variance)::int) * avg_lat)::bigint AS latency_sum_ms,
+                (avg_lat * (2 + random()))::int AS latency_max_ms
+              FROM (
+                VALUES
+                  ('60000000-0000-0000-0000-000000000001'::uuid, 45000, 15000, 0.012, 85),
+                  ('60000000-0000-0000-0000-000000000002'::uuid, 22000, 8000,  0.008, 120),
+                  ('60000000-0000-0000-0000-000000000003'::uuid, 8000,  3000,  0.015, 250),
+                  ('60000000-0000-0000-0000-000000000004'::uuid, 95000, 30000, 0.003, 45),
+                  ('60000000-0000-0000-0000-000000000005'::uuid, 12000, 5000,  0.005, 150)
+              ) AS params(api_id, base_req, variance, err_rate, avg_lat)
+              CROSS JOIN generate_series(current_date - 13, current_date, '1 day') AS d
+              ON CONFLICT (api_id, window_start) DO NOTHING;
+
+              -- ============================================================
+              -- SAMPLE HOURLY METRICS (last 24 hours for Payment API)
+              -- ============================================================
+              INSERT INTO analytics.metrics_1h (api_id, window_start, request_count, error_count, latency_sum_ms, latency_max_ms)
+              SELECT
+                '60000000-0000-0000-0000-000000000001'::uuid,
+                h,
+                1500 + (random() * 1000)::int,
+                (1500 * 0.012 + (random() * 10))::int,
+                ((1500 + (random() * 1000)::int) * 85)::bigint,
+                (85 * (2 + random()))::int
+              FROM generate_series(now() - interval '23 hours', now(), '1 hour') AS h
+              ON CONFLICT (api_id, window_start) DO NOTHING;
+
+              -- ============================================================
+              -- SAMPLE REQUEST LOGS (last 100 requests across APIs)
+              -- ============================================================
+              INSERT INTO analytics.request_logs (trace_id, api_id, consumer_id, application_id, method, path, status_code, latency_ms, request_size, response_size, auth_type, client_ip, user_agent, gateway_node, created_at)
+              SELECT
+                'trace-' || lpad(g::text, 6, '0'),
+                api_id,
+                consumer_id,
+                app_id,
+                method,
+                path,
+                CASE WHEN random() < 0.95 THEN 200 WHEN random() < 0.5 THEN 400 ELSE 500 END,
+                (30 + random() * 300)::int,
+                (100 + random() * 5000)::bigint,
+                (200 + random() * 50000)::bigint,
+                auth_type,
+                '10.0.' || (random() * 255)::int || '.' || (random() * 255)::int,
+                'GatewaySDK/2.1 (' || platform || ')',
+                'gw-node-0' || (1 + (random() * 2)::int) || '.gateway.local',
+                now() - (random() * interval '24 hours')
+              FROM generate_series(1, 100) AS g
+              CROSS JOIN LATERAL (
+                SELECT * FROM (VALUES
+                  ('60000000-0000-0000-0000-000000000001'::uuid, '20000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid, 'POST', '/v2/payments',       'API_KEY', 'Java/17'),
+                  ('60000000-0000-0000-0000-000000000001'::uuid, '20000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid, 'GET',  '/v2/payments/123',   'OAUTH2',  'Java/17'),
+                  ('60000000-0000-0000-0000-000000000002'::uuid, '20000000-0000-0000-0000-000000000003'::uuid, '30000000-0000-0000-0000-000000000003'::uuid, 'GET',  '/v1/shipments/track','API_KEY',  'Python/3.11'),
+                  ('60000000-0000-0000-0000-000000000004'::uuid, '20000000-0000-0000-0000-000000000004'::uuid, '30000000-0000-0000-0000-000000000006'::uuid, 'GET',  '/v3/weather/current','API_KEY',  'curl/8.1'),
+                  ('60000000-0000-0000-0000-000000000005'::uuid, '20000000-0000-0000-0000-000000000003'::uuid, '30000000-0000-0000-0000-000000000004'::uuid, 'POST', '/v1/analytics/events','OAUTH2', 'Node/20')
+                ) AS t(api_id, consumer_id, app_id, method, path, auth_type, platform)
+                ORDER BY random() LIMIT 1
+              ) AS req
+              ON CONFLICT DO NOTHING;
+
+      rollback:
+        - sql:
+            sql: |
+              DELETE FROM analytics.request_logs WHERE trace_id LIKE 'trace-%';
+              DELETE FROM analytics.metrics_1h WHERE api_id LIKE '60000000%';
+              DELETE FROM analytics.metrics_1d WHERE api_id LIKE '60000000%';
+              DELETE FROM analytics.alert_rules WHERE name LIKE 'High%' OR name LIKE 'Global%' OR name LIKE 'Traffic%';
