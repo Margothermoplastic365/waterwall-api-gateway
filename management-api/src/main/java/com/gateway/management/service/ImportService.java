@@ -163,7 +163,7 @@ public class ImportService {
                     .upstreamUrl(path) // path only — runtime resolves full URL via API.backendBaseUrl + path
                     .authTypes(route.getAuthTypes() != null ? route.getAuthTypes() : result.getAuthSchemes())
                     .priority(10)
-                    .stripPrefix(true)
+                    .stripPrefix(false)
                     .enabled(true)
                     .build();
             routeRepository.save(routeEntity);
