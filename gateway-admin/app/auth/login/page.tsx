@@ -39,23 +39,6 @@ const features = [
   },
 ];
 
-const demoUsers = [
-  { email: 'admin@gateway.local', password: 'changeme', name: 'Super Admin', role: 'SUPER_ADMIN', color: 'purple', desc: 'Full platform control' },
-  { email: 'publisher@gateway.local', password: 'changeme', name: 'Paula Publisher', role: 'API_PUBLISHER', color: 'blue', desc: 'Maker — create APIs, submit versions' },
-  { email: 'reviewer@gateway.local', password: 'changeme', name: 'Rick Reviewer', role: 'API_PUBLISHER_ADMIN', color: 'indigo', desc: 'Checker L1 — technical review' },
-  { email: 'compliance@gateway.local', password: 'changeme', name: 'Clara Compliance', role: 'COMPLIANCE_OFFICER', color: 'emerald', desc: 'Checker L2 — compliance review' },
-  { email: 'release@gateway.local', password: 'changeme', name: 'Ray Release', role: 'RELEASE_MANAGER', color: 'amber', desc: 'Env deploys & promotions' },
-  { email: 'alice@acme-corp.com', password: 'changeme', name: 'Alice Chen', role: 'API_PUBLISHER_ADMIN', color: 'pink', desc: 'Acme org API publisher admin' },
-];
-
-const colorMap: Record<string, { bg: string; text: string; hover: string }> = {
-  purple:  { bg: 'bg-purple-100',  text: 'text-purple-600',  hover: 'hover:border-purple-300 hover:bg-purple-50/50' },
-  blue:    { bg: 'bg-blue-100',    text: 'text-blue-600',    hover: 'hover:border-blue-300 hover:bg-blue-50/50' },
-  indigo:  { bg: 'bg-indigo-100',  text: 'text-indigo-600',  hover: 'hover:border-indigo-300 hover:bg-indigo-50/50' },
-  emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600', hover: 'hover:border-emerald-300 hover:bg-emerald-50/50' },
-  amber:   { bg: 'bg-amber-100',   text: 'text-amber-600',   hover: 'hover:border-amber-300 hover:bg-amber-50/50' },
-  pink:    { bg: 'bg-pink-100',    text: 'text-pink-600',    hover: 'hover:border-pink-300 hover:bg-pink-50/50' },
-};
 
 function LoginForm() {
   const router = useRouter();
@@ -68,7 +51,6 @@ function LoginForm() {
     : ''
   );
   const [loading, setLoading] = useState(false);
-  const [showDemoUsers, setShowDemoUsers] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,39 +173,6 @@ function LoginForm() {
               </button>
             </form>
 
-            {/* Collapsible demo credentials */}
-            <div className="mt-6 pt-5 border-t border-slate-100">
-              <button type="button" onClick={() => setShowDemoUsers(!showDemoUsers)}
-                className="w-full flex items-center justify-between px-1 py-1 text-xs text-slate-400 hover:text-slate-600 transition-colors">
-                <span className="font-medium">Demo credentials</span>
-                <svg className={`w-4 h-4 transition-transform duration-200 ${showDemoUsers ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showDemoUsers ? 'max-h-[400px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
-                <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
-                  {demoUsers.map((user) => {
-                    const c = colorMap[user.color] || colorMap.purple;
-                    return (
-                      <button key={user.email} type="button"
-                        onClick={() => { setEmail(user.email); setPassword(user.password); setShowDemoUsers(false); }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-dashed border-slate-200 ${c.hover} transition-all text-left group`}>
-                        <div className={`w-7 h-7 rounded-full ${c.bg} ${c.text} flex items-center justify-center shrink-0 text-xs font-bold`}>
-                          {user.name.charAt(0)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-slate-700 leading-tight">{user.name}</p>
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">{user.role}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-400 truncate">{user.desc}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

@@ -166,9 +166,24 @@ This builds and starts **9 containers**: PostgreSQL, RabbitMQ, 5 backend service
 
 ### 4. Default login credentials
 
+**Admin:**
+
 | Role | Email | Password |
 |---|---|---|
-| Admin | `admin@gateway.local` | `changeme` |
+| Super Admin | `admin@gateway.local` | `changeme` |
+
+**Sample users** (seeded in dev/uat):
+
+| Name | Email | Password | Org | Role |
+|---|---|---|---|---|
+| Alice Chen | `alice@acme-corp.com` | `password123` | Acme Corp | API_PUBLISHER_ADMIN |
+| Bob Martinez | `bob@acme-corp.com` | `password123` | Acme Corp | API_PUBLISHER |
+| Carol Nguyen | `carol@globex.io` | `password123` | Globex Industries | PLATFORM_ADMIN |
+| Dave Wilson | `dave@globex.io` | `password123` | Globex Industries | DEVELOPER |
+| Eve Tanaka | `eve@initech.dev` | `password123` | Initech Solutions | API_PUBLISHER_ADMIN |
+| Frank Mueller | `frank@initech.dev` | `password123` | Initech Solutions | DEVELOPER |
+| Grace Lee | `grace@example.com` | `password123` | — | VIEWER |
+| Heidi Olsen | `heidi@example.com` | `password123` | Acme Corp | AUDITOR |
 
 ### 5. Stop all services
 

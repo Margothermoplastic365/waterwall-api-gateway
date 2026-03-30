@@ -94,9 +94,12 @@ public class HealthDashboardService {
      */
     public GatewayStats getGatewayStats() {
         Map<String, Object> row = store.getGatewayStats();
-        long total = ((Number) row.get("total")).longValue();
-        double errorRate = ((Number) row.get("error_rate")).doubleValue();
-        double avgLatency = ((Number) row.get("avg_latency")).doubleValue();
+        Number totalNum = (Number) row.get("total");
+        Number errorRateNum = (Number) row.get("error_rate");
+        Number avgLatencyNum = (Number) row.get("avg_latency");
+        long total = totalNum != null ? totalNum.longValue() : 0L;
+        double errorRate = errorRateNum != null ? errorRateNum.doubleValue() : 0.0;
+        double avgLatency = avgLatencyNum != null ? avgLatencyNum.doubleValue() : 0.0;
 
         // RPS = total requests / 60 seconds
         double rps = total / 60.0;

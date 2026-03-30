@@ -19,12 +19,12 @@ databaseChangeLog:
         - dropUniqueConstraint:
             schemaName: gateway
             tableName: subscriptions
-            constraintName: uk_subscription_app_api
+            constraintName: uq_sub_app_api
         - addUniqueConstraint:
             schemaName: gateway
             tableName: subscriptions
-            constraintName: uk_subscription_app_api_env
+            constraintName: uq_sub_app_api_env
             columnNames: application_id, api_id, environment_slug
       rollback:
-        - dropUniqueConstraint: { schemaName: gateway, tableName: subscriptions, constraintName: uk_subscription_app_api_env }
+        - dropUniqueConstraint: { schemaName: gateway, tableName: subscriptions, constraintName: uq_sub_app_api_env }
         - dropColumn: { schemaName: gateway, tableName: subscriptions, columnName: environment_slug }

@@ -63,7 +63,6 @@ function LoginContent() {
   const [mfaCode, setMfaCode] = useState('');
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [verifyingMfa, setVerifyingMfa] = useState(false);
-  const [showDemoUsers, setShowDemoUsers] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -282,53 +281,6 @@ function LoginContent() {
               </button>
             </form>
 
-            {/* Quick access — collapsible demo users */}
-            <div className="mt-6 pt-5 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowDemoUsers(!showDemoUsers)}
-                className="w-full flex items-center justify-between px-1 py-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <span className="font-medium">Demo credentials</span>
-                <svg className={`w-4 h-4 transition-transform duration-200 ${showDemoUsers ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showDemoUsers ? 'max-h-[400px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
-                <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
-                  {[
-                    { email: 'developer@gateway.local', password: 'changeme', name: 'Dev Developer', role: 'DEVELOPER', color: 'blue', desc: 'Browse, subscribe, create apps' },
-                    { email: 'dave@globex.io', password: 'changeme', name: 'Dave Wilson', role: 'DEVELOPER', color: 'emerald', desc: 'Globex backend developer' },
-                    { email: 'frank@initech.dev', password: 'changeme', name: 'Frank Mueller', role: 'DEVELOPER', color: 'amber', desc: 'Initech junior developer' },
-                    { email: 'alice@acme-corp.com', password: 'changeme', name: 'Alice Chen', role: 'API_PUBLISHER_ADMIN', color: 'pink', desc: 'Acme API team lead' },
-                  ].map((user) => {
-                    const colorMap: Record<string, { bg: string; text: string; hover: string }> = {
-                      blue:    { bg: 'bg-blue-100',    text: 'text-blue-600',    hover: 'hover:border-blue-300 hover:bg-blue-50/50' },
-                      emerald: { bg: 'bg-emerald-100', text: 'text-emerald-600', hover: 'hover:border-emerald-300 hover:bg-emerald-50/50' },
-                      amber:   { bg: 'bg-amber-100',   text: 'text-amber-600',   hover: 'hover:border-amber-300 hover:bg-amber-50/50' },
-                      pink:    { bg: 'bg-pink-100',    text: 'text-pink-600',    hover: 'hover:border-pink-300 hover:bg-pink-50/50' },
-                    };
-                    const c = colorMap[user.color] || colorMap.blue;
-                    return (
-                      <button key={user.email} type="button"
-                        onClick={() => { setEmail(user.email); setPassword(user.password); setShowDemoUsers(false); }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-dashed border-slate-200 ${c.hover} transition-all text-left group`}>
-                        <div className={`w-7 h-7 rounded-full ${c.bg} ${c.text} flex items-center justify-center shrink-0 text-xs font-bold`}>
-                          {user.name.charAt(0)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-slate-700 leading-tight">{user.name}</p>
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">{user.role}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-400 truncate">{user.desc}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
 
             <div className="mt-6 text-center text-sm text-slate-500">
               Don&apos;t have an account?{' '}

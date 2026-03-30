@@ -119,7 +119,7 @@ gateway:
       absolute-timeout-hours: 8
     oauth2:
       default-client-id: ${OAUTH2_CLIENT_ID:gateway-portal}
-      default-client-secret: ${OAUTH2_CLIENT_SECRET}
+      default-client-secret: ${OAUTH2_CLIENT_SECRET:change-me}
       default-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/api/auth/callback}
       access-token-ttl-hours: ${OAUTH2_ACCESS_TOKEN_TTL_HOURS:1}
       refresh-token-ttl-days: ${OAUTH2_REFRESH_TOKEN_TTL_DAYS:30}

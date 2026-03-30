@@ -90,14 +90,14 @@ ON CONFLICT DO NOTHING;
 -- ============================================================
 -- 7. IDENTITY SCHEMA: API Keys
 -- ============================================================
-INSERT INTO identity.api_keys (id, application_id, name, key_prefix, key_hash, status, created_at)
+INSERT INTO identity.api_keys (id, application_id, name, key_prefix, key_hash, status, environment_slug, created_at)
 VALUES
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', 'Production Key',   'live_acme_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60001', 'ACTIVE', now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000002', 'Mobile Key',       'live_acme_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60002', 'ACTIVE', now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000003', 'Tracking Service', 'live_glbx_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60003', 'ACTIVE', now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000004', 'Analytics Key',    'live_glbx_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60004', 'ACTIVE', now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000005', 'ETL Pipeline Key', 'live_init_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60005', 'ACTIVE', now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', 'Dev Sandbox Key',  'test_dave_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60006', 'ACTIVE', now())
+  (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', 'Production Key',   'live_acme_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60001', 'ACTIVE', 'prod', now()),
+  (gen_random_uuid(), '30000000-0000-0000-0000-000000000002', 'Mobile Key',       'live_acme_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60002', 'ACTIVE', 'prod', now()),
+  (gen_random_uuid(), '30000000-0000-0000-0000-000000000003', 'Tracking Service', 'live_glbx_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60003', 'ACTIVE', 'prod', now()),
+  (gen_random_uuid(), '30000000-0000-0000-0000-000000000004', 'Analytics Key',    'live_glbx_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60004', 'ACTIVE', 'prod', now()),
+  (gen_random_uuid(), '30000000-0000-0000-0000-000000000005', 'ETL Pipeline Key', 'live_init_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60005', 'ACTIVE', 'prod', now()),
+  (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', 'Dev Sandbox Key',  'test_dave_', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f60006', 'ACTIVE', 'dev', now())
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
@@ -168,34 +168,34 @@ ON CONFLICT DO NOTHING;
 -- ============================================================
 -- 12. GATEWAY SCHEMA: Subscriptions
 -- ============================================================
-INSERT INTO gateway.subscriptions (id, application_id, api_id, plan_id, status, approved_at, created_at)
-VALUES
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000004', 'ACTIVE',  now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000002', 'ACTIVE',  now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000003', 'ACTIVE',  now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000003', 'ACTIVE',  now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000003', 'ACTIVE',  now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000001', 'ACTIVE',  now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'PENDING', now(), now()),
-  (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000004', 'ACTIVE',  now(), now())
-ON CONFLICT (application_id, api_id) DO NOTHING;
+-- INSERT INTO gateway.subscriptions (id, application_id, api_id, plan_id, status, environment_slug, approved_at, created_at)
+-- VALUES
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000004', 'ACTIVE',  'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000002', 'ACTIVE',  'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000003', 'ACTIVE',  'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000003', 'ACTIVE',  'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000003', 'ACTIVE',  'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000001', 'ACTIVE',  'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'PENDING', 'dev', now(), now()),
+--   (gen_random_uuid(), '30000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000004', 'ACTIVE',  'dev', now(), now())
+-- ON CONFLICT (application_id, api_id, environment_slug) DO NOTHING;
 
 -- ============================================================
 -- 13. GATEWAY SCHEMA: API Deployments
 -- ============================================================
-INSERT INTO gateway.api_deployments (id, api_id, environment_slug, status, deployed_by, deployed_at)
-VALUES
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '30 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'uat',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '20 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'staging', 'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '10 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '5 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000003', now() - interval '15 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000003', now() - interval '7 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000003', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000005', now() - interval '10 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '25 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '12 days'),
-  (gen_random_uuid(), '60000000-0000-0000-0000-000000000006', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000002', now() - interval '3 days')
-ON CONFLICT DO NOTHING;
+-- INSERT INTO gateway.api_deployments (id, api_id, environment_slug, status, deployed_by, deployed_at)
+-- VALUES
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '30 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'uat',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '20 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'staging', 'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '10 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000001', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '5 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000003', now() - interval '15 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000002', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000003', now() - interval '7 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000003', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000005', now() - interval '10 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '25 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000004', 'prod',    'DEPLOYED', '20000000-0000-0000-0000-000000000001', now() - interval '12 days'),
+--   (gen_random_uuid(), '60000000-0000-0000-0000-000000000006', 'dev',     'DEPLOYED', '20000000-0000-0000-0000-000000000002', now() - interval '3 days')
+-- ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 14. GATEWAY SCHEMA: Policy Attachments
