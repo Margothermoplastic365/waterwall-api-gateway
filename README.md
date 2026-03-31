@@ -70,7 +70,7 @@ Waterwall is a production-grade API gateway platform for publishing, securing, m
 
 > Open [`architecture/architecture-diagrams.html`](architecture/architecture-diagrams.html) locally in a browser for an interactive view with navigation.
 
-### Service Responsibilities
+### Services
 
 | Service | Port | Description |
 |---|---|---|
@@ -130,41 +130,174 @@ PostgreSQL with four schemas, managed by Liquibase migrations:
 
 ---
 
-## Quick Start
+## Getting Started
 
-### Prerequisites
+There are three ways to run Waterwall, from simplest to most flexible.
 
-- **Docker** and **Docker Compose** v2+
-- **Git**
+### Option 1: One-Command Setup (recommended)
 
-### 1. Clone the repository
+The `setup.sh` script handles everything — installs missing prerequisites, starts infrastructure, builds all services, and launches the platform.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DevLink-Tech-Academy/waterwall-api-gateway/main/setup.sh -o setup.sh
+chmod +x setup.sh
+./setup.sh
+```
+
+Or from an existing clone:
+
+```bash
+./setup.sh --no-clone
+```
+
+The script will:
+
+1. Detect your OS (Ubuntu/Debian, Fedora, CentOS, Arch, macOS, Windows)
+2. Install any missing tools: Git, Java 21, Maven, Node.js 20, Docker
+3. Start PostgreSQL and RabbitMQ via Docker Compose
+4. Build all 5 backend services with Maven
+5. Install frontend dependencies and build both portals
+6. Start all 7 services and print access URLs
+
+Press `Ctrl+C` to stop everything.
+
+> On Linux/macOS, prerequisites are installed automatically. On Windows, the script prints download links for any missing tools.
+
+### Option 2: Docker Compose (all-in-Docker)
+
+Runs everything in containers. Only requires Docker.
 
 ```bash
 git clone https://github.com/DevLink-Tech-Academy/waterwall-api-gateway.git
-cd waterwall-api-gateway
-```
-
-### 2. Start all services (zero configuration needed)
-
-A pre-configured `.env` file is included. No edits required for local development.
-
-```bash
-cd deploy/docker
+cd waterwall-api-gateway/deploy/docker
 docker compose up -d
 ```
 
 This builds and starts **9 containers**: PostgreSQL, RabbitMQ, 5 backend services, and 2 frontend portals. The first build takes a few minutes (Maven + npm dependencies are cached for subsequent builds).
 
-### 3. Access the platform
+To stop:
+
+```bash
+docker compose down        # Stop containers (keep data)
+docker compose down -v     # Stop containers and delete all data
+```
+
+### Option 3: Manual Setup (services run locally)
+
+For contributors who want to run services individually with hot reload.
+
+**Prerequisites:** Java 21, Maven 3.9+, Node.js 20+, npm 10+, PostgreSQL 16, RabbitMQ 3.13+
+
+#### Step 1: Start infrastructure
+
+Use Docker for just PostgreSQL and RabbitMQ:
+
+```bash
+cd deploy/docker
+docker compose up -d postgres rabbitmq
+```
+
+Or if running them natively, create the database and schemas:
+
+```sql
+CREATE DATABASE gateway;
+\c gateway
+CREATE SCHEMA IF NOT EXISTS identity;
+CREATE SCHEMA IF NOT EXISTS gateway;
+CREATE SCHEMA IF NOT EXISTS analytics;
+CREATE SCHEMA IF NOT EXISTS audit;
+CREATE SCHEMA IF NOT EXISTS notification;
+```
+
+And create the RabbitMQ virtual host:
+
+```bash
+rabbitmqctl add_vhost /cem
+rabbitmqctl set_permissions -p /cem guest ".*" ".*" ".*"
+```
+
+#### Step 2: Build the backend
+
+```bash
+mvn clean install -DskipTests
+```
+
+#### Step 3: Start backend services
+
+Services must start in order — identity-service first.
+
+**Start all at once (Windows):**
+
+```cmd
+start-all.bat
+```
+
+**Start individually** (open a separate terminal for each):
+
+```bash
+# 1. Identity Service (start first, wait for it to be ready)
+java -jar identity-service/target/identity-service-1.0.0-SNAPSHOT.jar
+
+# 2. Management API
+java -jar management-api/target/management-api-1.0.0-SNAPSHOT.jar
+
+# 3. Gateway Runtime
+java -jar gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar
+
+# 4. Analytics Service
+java -jar analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar
+
+# 5. Notification Service
+java -jar notification-service/target/notification-service-1.0.0-SNAPSHOT.jar
+```
+
+Verify all services are healthy:
+
+```bash
+curl http://localhost:8081/actuator/health/liveness   # identity-service
+curl http://localhost:8082/actuator/health/liveness   # management-api
+curl http://localhost:8080/actuator/health/liveness   # gateway-runtime
+curl http://localhost:8083/actuator/health/liveness   # analytics-service
+curl http://localhost:8084/actuator/health/liveness   # notification-service
+```
+
+#### Step 4: Start the frontends
+
+```bash
+npm install
+```
+
+**Development mode** (hot reload):
+
+```bash
+npm run dev:portal   # Developer portal on http://localhost:3000
+npm run dev:admin    # Admin portal on http://localhost:3001
+```
+
+**Production mode:**
+
+```bash
+npm run build:all
+cd gateway-portal && npx next start -p 3000 &
+cd gateway-admin && npx next start -p 3001 &
+```
+
+---
+
+## Access the Platform
 
 | Service | URL | Description |
 |---|---|---|
 | Developer Portal | http://localhost:3000 | API catalog, subscriptions, billing, docs |
 | Admin Portal | http://localhost:3001 | API management, analytics, monetization |
 | Gateway Runtime | http://localhost:8080 | API proxy endpoint |
+| Identity Service | http://localhost:8081 | Auth, users, API keys |
+| Management API | http://localhost:8082 | API lifecycle, subscriptions, plans |
+| Analytics Service | http://localhost:8083 | Dashboards, reports, alerting |
+| Notification Service | http://localhost:8084 | Email, webhook, Slack notifications |
 | RabbitMQ Management | http://localhost:15672 | Message broker UI (guest/guest) |
 
-### 4. Default login credentials
+### Login Credentials
 
 **Admin:**
 
@@ -185,189 +318,15 @@ This builds and starts **9 containers**: PostgreSQL, RabbitMQ, 5 backend service
 | Grace Lee | `grace@example.com` | `password123` | — | VIEWER |
 | Heidi Olsen | `heidi@example.com` | `password123` | Acme Corp | AUDITOR |
 
-### 5. Stop all services
-
-```bash
-docker compose down        # Stop containers (keep data)
-docker compose down -v     # Stop containers and delete all data
-```
-
-### 6. Enable ClickHouse (optional — for high-throughput mode)
-
-For deployments targeting 50K+ requests/second, enable ClickHouse as the analytics backend:
-
-1. Edit `deploy/docker/.env` — uncomment the ClickHouse section and update the Spring profile:
-
-```properties
-# Change this line:
-SPRING_PROFILES_ACTIVE=dev,clickhouse
-
-# Uncomment these:
-CLICKHOUSE_HOST=clickhouse
-CLICKHOUSE_PORT=8123
-CLICKHOUSE_HTTP_PORT=8123
-CLICKHOUSE_NATIVE_PORT=9000
-CLICKHOUSE_DB=gateway_analytics
-CLICKHOUSE_USER=default
-CLICKHOUSE_PASSWORD=
-```
-
-2. Start with the ClickHouse profile:
-
-```bash
-docker compose --profile clickhouse up -d
-```
-
-This starts everything from the standard setup plus a ClickHouse container. The analytics service automatically routes request log writes and reads to ClickHouse instead of PostgreSQL.
-
-### Migrating existing data
-
-**Local PostgreSQL to Docker:**
-```bash
-./scripts/migrate-to-docker.sh
-```
-
-**PostgreSQL request_logs to ClickHouse:**
-```bash
-./scripts/migrate-to-clickhouse.sh
-```
-
----
-
-## Development Setup (without Docker)
-
-For contributors who want to run services individually outside Docker.
-
-### Prerequisites
-
-- **Java 21** (Eclipse Temurin recommended)
-- **Maven 3.9+**
-- **Node.js 20+** and **npm 10+**
-- **PostgreSQL 16** running on `localhost:5432`
-- **RabbitMQ 3.13+** running on `localhost:5672`
-
-### Step 1: Infrastructure
-
-You can install PostgreSQL and RabbitMQ locally, or use Docker for just the infrastructure:
-
-```bash
-cd deploy/docker
-docker compose up -d postgres rabbitmq
-```
-
-If running PostgreSQL locally (not via Docker), create the database and schemas:
-
-```sql
-CREATE DATABASE gateway;
-\c gateway
-CREATE SCHEMA IF NOT EXISTS identity;
-CREATE SCHEMA IF NOT EXISTS gateway;
-CREATE SCHEMA IF NOT EXISTS analytics;
-CREATE SCHEMA IF NOT EXISTS audit;
-CREATE SCHEMA IF NOT EXISTS notification;
-```
-
-If running RabbitMQ locally (not via Docker), create the virtual host:
-
-```bash
-rabbitmqctl add_vhost /cem
-rabbitmqctl set_permissions -p /cem guest ".*" ".*" ".*"
-```
-
-### Step 2: Build the backend
-
-From the project root:
-
-```bash
-mvn clean install -DskipTests
-```
-
-### Step 3: Start backend services
-
-Services must be started in order — identity-service first (other services depend on it).
-
-**Option A: Start all at once (Windows)**
-
-```cmd
-start-all.bat
-```
-
-**Option B: Start individually**
-
-Open a separate terminal for each service:
-
-```bash
-# 1. Identity Service (start first, wait for it to be ready)
-java -jar identity-service/target/identity-service-1.0.0-SNAPSHOT.jar
-
-# 2. Management API (needs identity-service and postgres)
-java -jar management-api/target/management-api-1.0.0-SNAPSHOT.jar
-
-# 3. Gateway Runtime
-java -jar gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar
-
-# 4. Analytics Service
-java -jar analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar
-
-# 5. Notification Service
-java -jar notification-service/target/notification-service-1.0.0-SNAPSHOT.jar
-```
-
-Wait ~30 seconds for all services to initialize. Verify with:
-
-```bash
-curl http://localhost:8081/actuator/health/liveness   # identity-service
-curl http://localhost:8082/actuator/health/liveness   # management-api
-curl http://localhost:8080/actuator/health/liveness   # gateway-runtime
-curl http://localhost:8083/actuator/health/liveness   # analytics-service
-curl http://localhost:8084/actuator/health/liveness   # notification-service
-```
-
-### Step 4: Start the frontends
-
-Install dependencies from the project root (npm workspaces):
-
-```bash
-npm install
-```
-
-**Development mode** (hot reload):
-
-```bash
-npm run dev:portal   # Developer portal on http://localhost:3000
-npm run dev:admin    # Admin portal on http://localhost:3001
-```
-
-**Production mode** (build first, then serve):
-
-```bash
-npm run build:all
-cd gateway-portal && npx next start -p 3000 &
-cd gateway-admin && npx next start -p 3001 &
-```
-
-### Step 5: Access the platform
-
-| Service | URL |
-|---|---|
-| Developer Portal | http://localhost:3000 |
-| Admin Portal | http://localhost:3001 |
-| Gateway Runtime | http://localhost:8080 |
-| Identity Service | http://localhost:8081 |
-| Management API | http://localhost:8082 |
-| Analytics Service | http://localhost:8083 |
-| Notification Service | http://localhost:8084 |
-| RabbitMQ Management | http://localhost:15672 (guest/guest) |
-
-Log in with the credentials from the [Default login credentials](#4-default-login-credentials) section above.
-
 ---
 
 ## Configuration
 
-All services are configured through environment variables. When running with Docker, a pre-configured `.env` file is included — **no configuration needed**, just run `docker compose up -d`.
+All services are configured through environment variables. A pre-configured `.env` file is included for Docker — no changes needed for local development.
 
-| Variable | Docker Default | Local Dev Default | Description |
+Copy `.env.example` to `.env` for production deployments and fill in your values.
+
+| Variable | Docker Default | Local Default | Description |
 |---|---|---|---|
 | `GATEWAY_ENV` | `dev` | `dev` | Environment profile (`dev`, `staging`, `prod`) |
 | `DB_HOST` | `postgres` | `localhost` | PostgreSQL host |
@@ -381,7 +340,7 @@ All services are configured through environment variables. When running with Doc
 | `RABBITMQ_PASSWORD` | `guest` | `guest` | RabbitMQ password |
 | `RABBITMQ_VHOST` | `/cem` | `/cem` | RabbitMQ virtual host |
 | `JWT_ISSUER_URI` | `http://identity-service:8081` | `http://localhost:8081` | JWT token issuer URI |
-| `IDENTITY_SERVICE_URL` | `http://identity-service:8081` | `http://localhost:8081` | Internal URL for identity service |
+| `IDENTITY_SERVICE_URL` | `http://identity-service:8081` | `http://localhost:8081` | Internal identity service URL |
 | `MAIL_HOST` | `localhost` | `localhost` | SMTP server host |
 | `MAIL_PORT` | `1025` | `1025` | SMTP server port |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | `http://localhost:8082` | Management API URL (browser) |
@@ -389,45 +348,26 @@ All services are configured through environment variables. When running with Doc
 | `NEXT_PUBLIC_GATEWAY_URL` | `http://localhost:8080` | `http://localhost:8080` | Gateway runtime URL (browser) |
 | `NEXT_PUBLIC_ANALYTICS_URL` | `http://localhost:8083` | `http://localhost:8083` | Analytics service URL (browser) |
 
-**ClickHouse (optional — high-throughput mode):**
-
-| Variable | Default | Description |
-|---|---|---|
-| `CLICKHOUSE_HOST` | `clickhouse` | ClickHouse server host |
-| `CLICKHOUSE_PORT` | `8123` | ClickHouse HTTP port |
-| `CLICKHOUSE_NATIVE_PORT` | `9000` | ClickHouse native TCP port |
-| `CLICKHOUSE_DB` | `gateway_analytics` | ClickHouse database name |
-| `CLICKHOUSE_USER` | `default` | ClickHouse username |
-| `CLICKHOUSE_PASSWORD` | *(empty)* | ClickHouse password |
-
-> **Note:** `NEXT_PUBLIC_*` variables are accessed from the browser, so they use `localhost` even in Docker. Internal service-to-service URLs use Docker container names (`postgres`, `rabbitmq`, `identity-service`). ClickHouse variables are only needed when running with `--profile clickhouse`.
-
-Database schemas (`identity`, `gateway`, `analytics`, `notification`) are created automatically via the init script and managed with **Liquibase** migrations.
+> **Note:** `NEXT_PUBLIC_*` variables are accessed from the browser, so they use `localhost` even in Docker. Internal service-to-service URLs use Docker container names. Database schemas are created automatically and managed with Liquibase migrations.
 
 ---
 
 ## Deployment Modes
 
-Waterwall supports two deployment modes depending on your throughput requirements.
-
 ### Standard Mode (PostgreSQL only)
 
-Best for most deployments handling up to **~5,000 requests/second**. All request logs, analytics, and metrics are stored in PostgreSQL.
+Best for most deployments handling up to **~5,000 requests/second**. All data is stored in PostgreSQL.
 
 ```bash
 cd deploy/docker
 docker compose up -d
 ```
 
-This starts PostgreSQL, RabbitMQ, all 5 backend services, and both frontend portals. Zero additional configuration needed.
-
 ### High-Throughput Mode (PostgreSQL + ClickHouse)
 
-For deployments targeting **10,000 - 50,000+ requests/second**, Waterwall supports [ClickHouse](https://clickhouse.com/) as an optional analytics backend.
+For deployments targeting **10,000 - 50,000+ requests/second**, enable [ClickHouse](https://clickhouse.com/) as the analytics backend.
 
 #### Why ClickHouse?
-
-At high request volumes, writing every API request log to PostgreSQL becomes a bottleneck:
 
 | Challenge | PostgreSQL | ClickHouse |
 |---|---|---|
@@ -439,7 +379,7 @@ At high request volumes, writing every API request log to PostgreSQL becomes a b
 
 #### What moves to ClickHouse
 
-Only the high-volume analytics data moves to ClickHouse. Everything else stays in PostgreSQL:
+Only high-volume analytics data moves. Everything else stays in PostgreSQL:
 
 | Data | Store | Reason |
 |---|---|---|
@@ -447,15 +387,13 @@ Only the high-volume analytics data moves to ClickHouse. Everything else stays i
 | `metrics_1m`, `metrics_1h`, `metrics_1d` | **ClickHouse** | Aggregated rollups, large scans |
 | Real-time dashboards, SSE streaming | **ClickHouse** | Fast aggregation over recent data |
 | Custom report builder queries | **ClickHouse** | Ad-hoc analytics on large datasets |
-| API definitions, routes, plans | PostgreSQL | Relational data, low volume |
+| APIs, routes, plans, subscriptions | PostgreSQL | Relational, low volume |
 | Users, roles, sessions, API keys | PostgreSQL | Transactional, relational |
-| SLA configs, alert rules | PostgreSQL | Configuration data, JPA entities |
-| Subscriptions, billing, invoices | PostgreSQL | Transactional integrity |
 | Notification templates, delivery logs | PostgreSQL | Low volume, relational |
 
 #### Enabling ClickHouse
 
-1. Uncomment the ClickHouse variables in your `.env` file:
+1. Edit `deploy/docker/.env`:
 
 ```properties
 SPRING_PROFILES_ACTIVE=dev,clickhouse
@@ -467,15 +405,12 @@ CLICKHOUSE_DB=gateway_analytics
 2. Start with the ClickHouse profile:
 
 ```bash
-cd deploy/docker
 docker compose --profile clickhouse up -d
 ```
 
-This starts everything from Standard Mode plus a ClickHouse container. The analytics-service automatically detects the `clickhouse` Spring profile and routes request log writes and reads to ClickHouse instead of PostgreSQL.
-
 #### How the switch works
 
-The analytics-service uses a **strategy pattern** with Spring profiles — no code changes needed to switch:
+The analytics-service uses a strategy pattern with Spring profiles:
 
 ```
                      RequestLogStore (interface)
@@ -485,20 +420,13 @@ The analytics-service uses a **strategy pattern** with Spring profiles — no co
    (default — uses PostgreSQL)      (uses ClickHouse JDBC)
 ```
 
-- **No ClickHouse profile** (default): Spring injects `PostgresRequestLogStore`. All SQL uses PostgreSQL syntax. Identical behavior to previous versions.
-- **With ClickHouse profile**: Spring injects `ClickHouseRequestLogStore`. SQL is translated to ClickHouse-native syntax (`countIf()`, `quantile()`, `toStartOfHour()`, etc.).
-
-All other services (identity, management, notification, gateway-runtime) are completely unaffected — they always use PostgreSQL.
+All other services are completely unaffected — they always use PostgreSQL.
 
 #### Migrating existing data to ClickHouse
-
-If you're switching an existing deployment from Standard to High-Throughput mode:
 
 ```bash
 ./scripts/migrate-to-clickhouse.sh
 ```
-
-This exports `request_logs` and metrics tables from PostgreSQL and imports them into ClickHouse.
 
 ---
 
@@ -511,7 +439,7 @@ GET /actuator/health/liveness
 GET /actuator/health/readiness
 ```
 
-The Management API and Identity Service expose REST endpoints for API lifecycle operations, authentication, subscriptions, and more. Full OpenAPI documentation is available at each service's `/v3/api-docs` endpoint when running in development mode.
+Full OpenAPI documentation is available at each service's `/v3/api-docs` endpoint when running in development mode.
 
 ---
 
