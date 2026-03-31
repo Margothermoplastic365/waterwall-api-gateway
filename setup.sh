@@ -354,12 +354,12 @@ fi
 log "Docker Compose is available"
 
 # Verify Java version
-JAVA_VER=$(java -version 2>&1 | head -1 | grep -oP '"\K[^"]+' | cut -d. -f1)
-if [[ "$JAVA_VER" -lt 21 ]]; then
-  warn "Java $JAVA_VER found but 21+ required — installing Java 21..."
+JAVA_VER=$(java -version 2>&1 | head -1 | sed -n 's/.*"\([0-9]*\).*/\1/p')
+if [[ -z "$JAVA_VER" ]] || [[ "$JAVA_VER" -lt 21 ]]; then
+  warn "Java ${JAVA_VER:-unknown} found but 21+ required — installing Java 21..."
   install_java
-  JAVA_VER=$(java -version 2>&1 | head -1 | grep -oP '"\K[^"]+' | cut -d. -f1)
-  [[ "$JAVA_VER" -ge 21 ]] || err "Java 21+ required (found $JAVA_VER)"
+  JAVA_VER=$(java -version 2>&1 | head -1 | sed -n 's/.*"\([0-9]*\).*/\1/p')
+  [[ -n "$JAVA_VER" && "$JAVA_VER" -ge 21 ]] || err "Java 21+ required (found ${JAVA_VER:-unknown})"
 fi
 
 log "All prerequisites met"
@@ -466,18 +466,38 @@ start_service "notification-service" "notification-service/target/notification-s
 # -----------------------------------------------
 step "Building and starting frontends"
 
-npm run build:all --silent 2>/dev/null || npm run build --silent 2>/dev/null || {
-  warn "Production build failed, falling back to dev mode"
-}
+# Set env vars needed by Next.js build
+export NEXT_PUBLIC_API_URL="http://localhost:8082"
+export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
+export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
+export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
 
-cd "$PROJECT_ROOT/gateway-portal"
-npx next start -p 3000 > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
-PIDS+=($!)
-cd "$PROJECT_ROOT/gateway-admin"
-npx next start -p 3001 > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
-PIDS+=($!)
+BUILD_OK=false
+if npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
+  BUILD_OK=true
+  log "Frontend production build complete"
+else
+  warn "Production build failed — see logs/frontend-build.log"
+fi
+
+if [[ "$BUILD_OK" == true ]]; then
+  # Production mode
+  cd "$PROJECT_ROOT/gateway-portal"
+  npx next start -p 3000 > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
+  PIDS+=($!)
+  cd "$PROJECT_ROOT/gateway-admin"
+  PORT=3001 npx next start -p 3001 > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
+  PIDS+=($!)
+else
+  # Dev mode fallback
+  cd "$PROJECT_ROOT"
+  npm run dev:portal > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
+  PIDS+=($!)
+  npm run dev:admin > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
+  PIDS+=($!)
+fi
+
 cd "$PROJECT_ROOT"
-
 log "Frontends starting..."
 sleep 5
 
