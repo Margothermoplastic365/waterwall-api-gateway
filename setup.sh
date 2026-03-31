@@ -95,11 +95,23 @@ install_git() {
 install_java() {
   case "$OS" in
     debian)
-      sudo apt-get update -qq
-      sudo apt-get install -y -qq wget apt-transport-https
-      wget -qO- https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/keyrings/adoptium.asc >/dev/null
-      echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo "$VERSION_CODENAME") main" | sudo tee /etc/apt/sources.list.d/adoptium.list >/dev/null
-      sudo apt-get update -qq && sudo apt-get install -y -qq temurin-21-jdk
+      # Try Adoptium repo first, fall back to direct tarball if apt repos are broken
+      if sudo apt-get update -qq 2>&1 | grep -q "^E:"; then
+        warn "apt-get update has errors — installing Java via direct download..."
+        install_java_tarball
+      else
+        sudo apt-get install -y -qq wget apt-transport-https gnupg
+        sudo mkdir -p /etc/apt/keyrings
+        wget -qO- https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo tee /etc/apt/keyrings/adoptium.asc >/dev/null
+        CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+        echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $CODENAME main" | sudo tee /etc/apt/sources.list.d/adoptium.list >/dev/null
+        if sudo apt-get update -qq 2>/dev/null && sudo apt-get install -y -qq temurin-21-jdk 2>/dev/null; then
+          return 0
+        else
+          warn "Adoptium repo install failed — falling back to direct download..."
+          install_java_tarball
+        fi
+      fi
       ;;
     fedora)  sudo dnf install -y -q java-21-openjdk-devel ;;
     centos)  sudo yum install -y -q java-21-openjdk-devel ;;
@@ -110,9 +122,42 @@ install_java() {
   esac
 }
 
+install_java_tarball() {
+  local ARCH
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64)  ARCH="x64" ;;
+    aarch64) ARCH="aarch64" ;;
+    *)       err "Unsupported architecture: $ARCH" ;;
+  esac
+
+  local JDK_URL="https://api.adoptium.net/v3/binary/latest/21/ga/linux/${ARCH}/jdk/hotspot/normal/eclipse"
+  local INSTALL_DIR="/opt/java/temurin-21"
+
+  sudo mkdir -p "$INSTALL_DIR"
+  log "Downloading Eclipse Temurin JDK 21 ($ARCH)..."
+  curl -fsSL "$JDK_URL" | sudo tar -xz -C "$INSTALL_DIR" --strip-components=1
+
+  # Set up alternatives
+  sudo update-alternatives --install /usr/bin/java java "$INSTALL_DIR/bin/java" 100
+  sudo update-alternatives --install /usr/bin/javac javac "$INSTALL_DIR/bin/javac" 100
+  sudo update-alternatives --set java "$INSTALL_DIR/bin/java"
+  sudo update-alternatives --set javac "$INSTALL_DIR/bin/javac"
+
+  # Make available in current session
+  export JAVA_HOME="$INSTALL_DIR"
+  export PATH="$INSTALL_DIR/bin:$PATH"
+  log "Java installed to $INSTALL_DIR"
+}
+
 install_maven() {
   case "$OS" in
-    debian)  sudo apt-get install -y -qq maven ;;
+    debian)
+      if ! sudo apt-get install -y -qq maven 2>/dev/null; then
+        warn "apt install failed — installing Maven manually..."
+        install_maven_tarball
+      fi
+      ;;
     fedora)  sudo dnf install -y -q maven ;;
     centos)  sudo yum install -y -q maven ;;
     arch)    sudo pacman -S --noconfirm maven ;;
@@ -122,27 +167,72 @@ install_maven() {
   esac
 }
 
+install_maven_tarball() {
+  local MVN_VER="3.9.9"
+  local MVN_URL="https://dlcdn.apache.org/maven/maven-3/${MVN_VER}/binaries/apache-maven-${MVN_VER}-bin.tar.gz"
+  local INSTALL_DIR="/opt/maven"
+
+  sudo mkdir -p "$INSTALL_DIR"
+  log "Downloading Maven ${MVN_VER}..."
+  curl -fsSL "$MVN_URL" | sudo tar -xz -C "$INSTALL_DIR" --strip-components=1
+
+  sudo ln -sf "$INSTALL_DIR/bin/mvn" /usr/local/bin/mvn
+  export PATH="$INSTALL_DIR/bin:$PATH"
+  log "Maven installed to $INSTALL_DIR"
+}
+
 install_node() {
+  # Try fnm (works on any Linux/macOS without sudo)
   if command -v curl &>/dev/null; then
-    curl -fsSL https://fnm.vercel.app/install | bash
-    export PATH="$HOME/.local/share/fnm:$PATH"
+    export FNM_DIR="$HOME/.local/share/fnm"
+    curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+    export PATH="$FNM_DIR:$PATH"
     eval "$(fnm env)" 2>/dev/null || true
-    fnm install 20
-    fnm use 20
-  else
-    case "$OS" in
-      debian)
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-        sudo apt-get install -y -qq nodejs
-        ;;
-      fedora)  sudo dnf install -y -q nodejs npm ;;
-      centos)  curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - && sudo yum install -y -q nodejs ;;
-      arch)    sudo pacman -S --noconfirm nodejs npm ;;
-      macos)   brew install node@20 ;;
-      windows) warn "Install Node.js 20 from https://nodejs.org/"; return 1 ;;
-      *)       err "Cannot auto-install Node.js on $OS" ;;
-    esac
+    if fnm install 20 && fnm use 20; then
+      return 0
+    fi
+    warn "fnm install failed — trying package manager..."
   fi
+
+  case "$OS" in
+    debian)
+      if curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - 2>/dev/null; then
+        sudo apt-get install -y -qq nodejs
+      else
+        install_node_binary
+      fi
+      ;;
+    fedora)  sudo dnf install -y -q nodejs npm ;;
+    centos)  curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - && sudo yum install -y -q nodejs ;;
+    arch)    sudo pacman -S --noconfirm nodejs npm ;;
+    macos)   brew install node@20 ;;
+    windows) warn "Install Node.js 20 from https://nodejs.org/"; return 1 ;;
+    *)       install_node_binary ;;
+  esac
+}
+
+install_node_binary() {
+  local ARCH
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64)  ARCH="x64" ;;
+    aarch64) ARCH="arm64" ;;
+    *)       err "Unsupported architecture: $ARCH" ;;
+  esac
+
+  local NODE_VER="v20.18.3"
+  local NODE_URL="https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-${ARCH}.tar.xz"
+  local INSTALL_DIR="/opt/nodejs"
+
+  sudo mkdir -p "$INSTALL_DIR"
+  log "Downloading Node.js ${NODE_VER} ($ARCH)..."
+  curl -fsSL "$NODE_URL" | sudo tar -xJ -C "$INSTALL_DIR" --strip-components=1
+
+  sudo ln -sf "$INSTALL_DIR/bin/node" /usr/local/bin/node
+  sudo ln -sf "$INSTALL_DIR/bin/npm" /usr/local/bin/npm
+  sudo ln -sf "$INSTALL_DIR/bin/npx" /usr/local/bin/npx
+  export PATH="$INSTALL_DIR/bin:$PATH"
+  log "Node.js installed to $INSTALL_DIR"
 }
 
 install_docker() {
