@@ -354,11 +354,15 @@ fi
 log "Docker Compose is available"
 
 # Verify Java version
-JAVA_VER=$(java -version 2>&1 | head -1 | sed -n 's/.*"\([0-9]*\).*/\1/p')
+get_java_major() {
+  java -version 2>&1 | head -1 | awk -F'"' '{print $2}' | awk -F'.' '{if ($1 == "1") print $2; else print $1}'
+}
+JAVA_VER=$(get_java_major)
 if [[ -z "$JAVA_VER" ]] || [[ "$JAVA_VER" -lt 21 ]]; then
   warn "Java ${JAVA_VER:-unknown} found but 21+ required — installing Java 21..."
   install_java
-  JAVA_VER=$(java -version 2>&1 | head -1 | sed -n 's/.*"\([0-9]*\).*/\1/p')
+  hash -r 2>/dev/null || true
+  JAVA_VER=$(get_java_major)
   [[ -n "$JAVA_VER" && "$JAVA_VER" -ge 21 ]] || err "Java 21+ required (found ${JAVA_VER:-unknown})"
 fi
 
