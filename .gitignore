@@ -57,3 +57,6 @@ docker-compose.override.yml
 .claude/
 logs/
 docs/
+website/
+scripts/
+tsconfig.tsbuildinfo
