@@ -437,7 +437,13 @@ All other services are completely unaffected — they always use PostgreSQL.
 
 ---
 
-## API Documentation
+## Documentation
+
+### User Guide
+
+For comprehensive setup instructions, configuration guides, and usage documentation, see the **[Waterwall User Guide](https://waterwall.dev/docs/index.html)**.
+
+### API Documentation
 
 Each backend service exposes health and info endpoints via Spring Boot Actuator:
 
