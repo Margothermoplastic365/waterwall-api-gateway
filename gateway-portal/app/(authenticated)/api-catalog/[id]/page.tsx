@@ -1487,7 +1487,7 @@ function SdkTab({ apiId, apiName }: { apiId: string; apiName: string }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const ext = protocolType === 'SOAP' ? '.wsdl' : protocolType === 'GRAPHQL' ? '.graphql' : protocolType === 'GRPC' ? '.proto' : '.json';
+      const ext = api?.protocolType === 'SOAP' ? '.wsdl' : api?.protocolType === 'GRAPHQL' ? '.graphql' : api?.protocolType === 'GRPC' ? '.proto' : '.json';
       a.download = `${apiName.replace(/\s+/g, '-').toLowerCase()}-spec${ext}`;
       a.click();
       URL.revokeObjectURL(url);
