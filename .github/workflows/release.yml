@@ -81,6 +81,7 @@ jobs:
           # Copy infrastructure files
           mkdir -p "$RELEASE_DIR/deploy/docker"
           cp deploy/docker/docker-compose.yml "$RELEASE_DIR/deploy/docker/"
+          cp deploy/docker/init-schemas.sql "$RELEASE_DIR/deploy/docker/"
           cp deploy/docker/.env "$RELEASE_DIR/deploy/docker/" 2>/dev/null || true
           cp deploy/docker/.env.example "$RELEASE_DIR/deploy/docker/" 2>/dev/null || true
 

@@ -71,6 +71,18 @@ fi
 step "Starting infrastructure (PostgreSQL + RabbitMQ)"
 
 cd "$PROJECT_ROOT/deploy/docker"
+
+# Ensure init-schemas.sql exists
+if [[ ! -f "init-schemas.sql" ]]; then
+  cat > init-schemas.sql << 'SQLEOF'
+CREATE SCHEMA IF NOT EXISTS identity;
+CREATE SCHEMA IF NOT EXISTS gateway;
+CREATE SCHEMA IF NOT EXISTS analytics;
+CREATE SCHEMA IF NOT EXISTS audit;
+CREATE SCHEMA IF NOT EXISTS notification;
+SQLEOF
+fi
+
 docker compose up -d postgres rabbitmq 2>/dev/null
 
 wait_for_service() {
