@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Waterwall API Gateway — Full Setup Script
-# Automatically installs prerequisites, clones the repo, starts infrastructure,
-# builds and runs all services using PM2 for process management.
+# Automatically installs prerequisites and starts all services using PM2.
+#
+# By default, downloads a pre-built release from GitHub (fast, no build needed).
+# Use --build-from-source to clone and build everything locally.
 #
 # Supported OS: Ubuntu/Debian, Fedora, CentOS, Arch Linux, macOS (Homebrew)
 # Windows: prints manual install links for missing tools
 #
 # Usage:
-#   chmod +x setup.sh
-#   ./setup.sh              # clone + full setup
-#   ./setup.sh --no-clone   # skip clone (run from existing repo root)
+#   ./setup.sh                    # download latest release + start (recommended)
+#   ./setup.sh --version v1.0.0   # download specific version
+#   ./setup.sh --build-from-source  # clone repo + build from source
+#   ./setup.sh --no-clone         # build from source in current directory
 # =============================================================================
 
 set -euo pipefail
@@ -26,14 +29,35 @@ warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 err()   { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step()  { echo -e "\n${CYAN}==> $1${NC}"; }
 
-REPO_URL="https://github.com/DevLink-Tech-Academy/waterwall-api-gateway.git"
+GITHUB_REPO="DevLink-Tech-Academy/waterwall-api-gateway"
+REPO_URL="https://github.com/${GITHUB_REPO}.git"
 REPO_DIR="waterwall-api-gateway"
 SKIP_CLONE=false
+BUILD_FROM_SOURCE=false
+RELEASE_VERSION=""
 
 for arg in "$@"; do
   case "$arg" in
-    --no-clone) SKIP_CLONE=true ;;
+    --no-clone) SKIP_CLONE=true; BUILD_FROM_SOURCE=true ;;
+    --build-from-source) BUILD_FROM_SOURCE=true ;;
+    --version) shift_next=true ;;
+    *)
+      if [[ "${shift_next:-false}" == true ]]; then
+        RELEASE_VERSION="$arg"
+        shift_next=false
+      fi
+      ;;
   esac
+done
+
+# Handle --version as next arg
+for i in $(seq 1 $#); do
+  if [[ "${!i}" == "--version" ]]; then
+    next=$((i + 1))
+    if [[ $next -le $# ]]; then
+      RELEASE_VERSION="${!next}"
+    fi
+  fi
 done
 
 # -----------------------------------------------
@@ -329,12 +353,15 @@ check_and_install() {
   fi
 }
 
-check_and_install git   install_git   "Git"
 check_and_install java  install_java  "Java 21"
-check_and_install mvn   install_maven "Maven"
 check_and_install node  install_node  "Node.js"
 check_and_install npm   install_node  "npm"
 check_and_install docker install_docker "Docker"
+
+if [[ "$BUILD_FROM_SOURCE" == true ]]; then
+  check_and_install git   install_git   "Git"
+  check_and_install mvn   install_maven "Maven"
+fi
 
 # Verify docker compose
 if ! docker compose version &>/dev/null; then
@@ -378,23 +405,102 @@ fi
 log "All prerequisites met"
 
 # -----------------------------------------------
-# 2. Clone repository
+# 2. Get the application (download release OR build from source)
 # -----------------------------------------------
-if [[ "$SKIP_CLONE" == false ]]; then
-  step "Cloning repository"
-  if [[ -d "$REPO_DIR" ]]; then
-    warn "$REPO_DIR already exists, pulling latest..."
-    cd "$REPO_DIR" && git pull && cd ..
-  else
-    git clone "$REPO_URL" "$REPO_DIR"
+if [[ "$BUILD_FROM_SOURCE" == false ]]; then
+  # =============================================
+  # RELEASE MODE: Download pre-built release
+  # =============================================
+  step "Downloading pre-built release"
+
+  # Determine version to download
+  if [[ -z "$RELEASE_VERSION" ]]; then
+    log "Fetching latest release version..."
+    RELEASE_VERSION=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep -oP '"tag_name":\s*"\K[^"]+' || true)
+    if [[ -z "$RELEASE_VERSION" ]]; then
+      warn "No release found — falling back to build from source"
+      BUILD_FROM_SOURCE=true
+    fi
   fi
-  cd "$REPO_DIR"
-else
-  step "Skipping clone (--no-clone)"
+
+  if [[ "$BUILD_FROM_SOURCE" == false ]]; then
+    TARBALL_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_VERSION}/waterwall-${RELEASE_VERSION}.tar.gz"
+    TARBALL_FILE="waterwall-${RELEASE_VERSION}.tar.gz"
+
+    log "Downloading Waterwall ${RELEASE_VERSION}..."
+    if curl -fsSL "$TARBALL_URL" -o "$TARBALL_FILE"; then
+      log "Download complete"
+    else
+      warn "Download failed — falling back to build from source"
+      BUILD_FROM_SOURCE=true
+    fi
+  fi
+
+  if [[ "$BUILD_FROM_SOURCE" == false ]]; then
+    step "Extracting release"
+    tar -xzf "$TARBALL_FILE"
+    rm -f "$TARBALL_FILE"
+
+    # The tarball extracts to waterwall-vX.Y.Z/
+    EXTRACTED_DIR="waterwall-${RELEASE_VERSION}"
+    if [[ -d "$EXTRACTED_DIR" ]]; then
+      # Move to standard directory name
+      rm -rf "$REPO_DIR"
+      mv "$EXTRACTED_DIR" "$REPO_DIR"
+    fi
+
+    cd "$REPO_DIR"
+    PROJECT_ROOT=$(pwd)
+    log "Working directory: $PROJECT_ROOT"
+
+    # Install frontend runtime dependencies (next needs node_modules)
+    if [[ ! -d "node_modules" ]]; then
+      step "Installing frontend runtime dependencies"
+      npm install --production --silent 2>/dev/null || npm install --silent
+      log "Dependencies installed"
+    fi
+  fi
 fi
 
-PROJECT_ROOT=$(pwd)
-log "Working directory: $PROJECT_ROOT"
+if [[ "$BUILD_FROM_SOURCE" == true ]]; then
+  # =============================================
+  # SOURCE MODE: Clone + build everything
+  # =============================================
+
+  # Ensure build tools are available
+  if ! command -v git &>/dev/null; then
+    check_and_install git install_git "Git"
+  fi
+  if ! command -v mvn &>/dev/null; then
+    check_and_install mvn install_maven "Maven"
+  fi
+
+  if [[ "$SKIP_CLONE" == false ]]; then
+    step "Cloning repository"
+    if [[ -d "$REPO_DIR" ]]; then
+      warn "$REPO_DIR already exists, pulling latest..."
+      cd "$REPO_DIR" && git pull && cd ..
+    else
+      git clone "$REPO_URL" "$REPO_DIR"
+    fi
+    cd "$REPO_DIR"
+  else
+    step "Skipping clone (--no-clone)"
+  fi
+
+  PROJECT_ROOT=$(pwd)
+  log "Working directory: $PROJECT_ROOT"
+
+  # Build backend
+  step "Building backend services"
+  mvn clean install -DskipTests -q
+  log "Backend build complete"
+
+  # Install frontend dependencies
+  step "Installing frontend dependencies"
+  npm install --silent
+  log "Frontend dependencies installed"
+fi
 
 # -----------------------------------------------
 # 3. Start infrastructure (PostgreSQL + RabbitMQ)
@@ -428,32 +534,35 @@ done
 cd "$PROJECT_ROOT"
 
 # -----------------------------------------------
-# 4. Build backend
-# -----------------------------------------------
-step "Building backend services"
-mvn clean install -DskipTests -q
-log "Backend build complete"
-
-# -----------------------------------------------
-# 5. Install frontend dependencies
-# -----------------------------------------------
-step "Installing frontend dependencies"
-npm install --silent
-log "Frontend dependencies installed"
-
-# -----------------------------------------------
-# 6. Generate PM2 ecosystem file
+# 4. Generate PM2 ecosystem file
 # -----------------------------------------------
 step "Configuring PM2"
 
-cat > "$PROJECT_ROOT/ecosystem.config.js" << 'PMEOF'
+mkdir -p logs
+
+# Detect JAR paths (release uses clean names, source uses target/ paths)
+if [[ -f "$PROJECT_ROOT/identity-service.jar" ]]; then
+  JAR_IDENTITY="identity-service.jar"
+  JAR_MANAGEMENT="management-api.jar"
+  JAR_RUNTIME="gateway-runtime.jar"
+  JAR_ANALYTICS="analytics-service.jar"
+  JAR_NOTIFICATION="notification-service.jar"
+else
+  JAR_IDENTITY="identity-service/target/identity-service-1.0.0-SNAPSHOT.jar"
+  JAR_MANAGEMENT="management-api/target/management-api-1.0.0-SNAPSHOT.jar"
+  JAR_RUNTIME="gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar"
+  JAR_ANALYTICS="analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar"
+  JAR_NOTIFICATION="notification-service/target/notification-service-1.0.0-SNAPSHOT.jar"
+fi
+
+cat > "$PROJECT_ROOT/ecosystem.config.js" << PMEOF
 module.exports = {
   apps: [
     {
       name: "identity-service",
       script: "java",
-      args: "-jar identity-service/target/identity-service-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
-      cwd: process.env.PROJECT_ROOT || ".",
+      args: "-jar ${JAR_IDENTITY} --spring.profiles.active=dev",
+      cwd: "${PROJECT_ROOT}",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -467,8 +576,8 @@ module.exports = {
     {
       name: "management-api",
       script: "java",
-      args: "-jar management-api/target/management-api-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
-      cwd: process.env.PROJECT_ROOT || ".",
+      args: "-jar ${JAR_MANAGEMENT} --spring.profiles.active=dev",
+      cwd: "${PROJECT_ROOT}",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -482,8 +591,8 @@ module.exports = {
     {
       name: "gateway-runtime",
       script: "java",
-      args: "-jar gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
-      cwd: process.env.PROJECT_ROOT || ".",
+      args: "-jar ${JAR_RUNTIME} --spring.profiles.active=dev",
+      cwd: "${PROJECT_ROOT}",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -497,8 +606,8 @@ module.exports = {
     {
       name: "analytics-service",
       script: "java",
-      args: "-jar analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
-      cwd: process.env.PROJECT_ROOT || ".",
+      args: "-jar ${JAR_ANALYTICS} --spring.profiles.active=dev",
+      cwd: "${PROJECT_ROOT}",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -512,8 +621,8 @@ module.exports = {
     {
       name: "notification-service",
       script: "java",
-      args: "-jar notification-service/target/notification-service-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
-      cwd: process.env.PROJECT_ROOT || ".",
+      args: "-jar ${JAR_NOTIFICATION} --spring.profiles.active=dev",
+      cwd: "${PROJECT_ROOT}",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -528,7 +637,7 @@ module.exports = {
       name: "gateway-portal",
       script: "npx",
       args: "next start -p 3000",
-      cwd: process.env.PROJECT_ROOT ? process.env.PROJECT_ROOT + "/gateway-portal" : "./gateway-portal",
+      cwd: "${PROJECT_ROOT}/gateway-portal",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -540,16 +649,16 @@ module.exports = {
         NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8080",
         NEXT_PUBLIC_ANALYTICS_URL: "http://localhost:8083"
       },
-      log_file: "logs/gateway-portal.log",
-      error_file: "logs/gateway-portal-error.log",
-      out_file: "logs/gateway-portal-out.log",
+      log_file: "${PROJECT_ROOT}/logs/gateway-portal.log",
+      error_file: "${PROJECT_ROOT}/logs/gateway-portal-error.log",
+      out_file: "${PROJECT_ROOT}/logs/gateway-portal-out.log",
       time: true
     },
     {
       name: "gateway-admin",
       script: "npx",
       args: "next start -p 3001",
-      cwd: process.env.PROJECT_ROOT ? process.env.PROJECT_ROOT + "/gateway-admin" : "./gateway-admin",
+      cwd: "${PROJECT_ROOT}/gateway-admin",
       interpreter: "none",
       autorestart: true,
       max_restarts: 5,
@@ -561,9 +670,9 @@ module.exports = {
         NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8080",
         NEXT_PUBLIC_ANALYTICS_URL: "http://localhost:8083"
       },
-      log_file: "logs/gateway-admin.log",
-      error_file: "logs/gateway-admin-error.log",
-      out_file: "logs/gateway-admin-out.log",
+      log_file: "${PROJECT_ROOT}/logs/gateway-admin.log",
+      error_file: "${PROJECT_ROOT}/logs/gateway-admin-error.log",
+      out_file: "${PROJECT_ROOT}/logs/gateway-admin-out.log",
       time: true
     }
   ]
@@ -573,31 +682,30 @@ PMEOF
 log "PM2 ecosystem file created"
 
 # -----------------------------------------------
-# 7. Build frontends
+# 5. Build frontends (only if building from source and not already built)
 # -----------------------------------------------
-step "Building frontends"
+if [[ "$BUILD_FROM_SOURCE" == true && ! -d "$PROJECT_ROOT/gateway-portal/.next" ]]; then
+  step "Building frontends"
 
-mkdir -p logs
+  export NEXT_PUBLIC_API_URL="http://localhost:8082"
+  export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
+  export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
+  export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
 
-export NEXT_PUBLIC_API_URL="http://localhost:8082"
-export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
-export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
-export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
-
-BUILD_OK=false
-if npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
-  BUILD_OK=true
-  log "Frontend production build complete"
-else
-  warn "Production build failed — see logs/frontend-build.log"
-  warn "Frontends will start in dev mode"
-  # Patch ecosystem to use dev mode instead of production start
-  sed -i 's|"next start -p 3000"|"next dev -p 3000"|' "$PROJECT_ROOT/ecosystem.config.js"
-  sed -i 's|"next start -p 3001"|"next dev -p 3001"|' "$PROJECT_ROOT/ecosystem.config.js"
+  if npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
+    log "Frontend production build complete"
+  else
+    warn "Production build failed — see logs/frontend-build.log"
+    warn "Frontends will start in dev mode"
+    sed -i 's|"next start -p 3000"|"next dev -p 3000"|' "$PROJECT_ROOT/ecosystem.config.js"
+    sed -i 's|"next start -p 3001"|"next dev -p 3001"|' "$PROJECT_ROOT/ecosystem.config.js"
+  fi
+elif [[ -d "$PROJECT_ROOT/gateway-portal/.next" ]]; then
+  log "Frontend builds found — skipping build"
 fi
 
 # -----------------------------------------------
-# 8. Start all services with PM2
+# 6. Start all services with PM2
 # -----------------------------------------------
 step "Starting all services with PM2"
 
@@ -662,7 +770,7 @@ log "Setting up PM2 startup on boot..."
 pm2 startup 2>/dev/null || warn "Run the pm2 startup command printed above as root to enable boot persistence"
 
 # -----------------------------------------------
-# 9. Summary
+# 7. Summary
 # -----------------------------------------------
 step "Waterwall API Gateway is running (managed by PM2)"
 

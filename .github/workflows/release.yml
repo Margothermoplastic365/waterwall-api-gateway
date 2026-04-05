@@ -1,0 +1,104 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build backend (Maven)
+        run: mvn clean package -DskipTests -q
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontends
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8082
+          NEXT_PUBLIC_IDENTITY_URL: http://localhost:8081
+          NEXT_PUBLIC_GATEWAY_URL: http://localhost:8080
+          NEXT_PUBLIC_ANALYTICS_URL: http://localhost:8083
+        run: npm run build:all
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Package release tarball
+        run: |
+          RELEASE_DIR="waterwall-${{ steps.version.outputs.VERSION }}"
+          mkdir -p "$RELEASE_DIR"
+
+          # Copy JARs (rename to clean names)
+          cp identity-service/target/identity-service-1.0.0-SNAPSHOT.jar "$RELEASE_DIR/identity-service.jar"
+          cp management-api/target/management-api-1.0.0-SNAPSHOT.jar "$RELEASE_DIR/management-api.jar"
+          cp gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar "$RELEASE_DIR/gateway-runtime.jar"
+          cp analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar "$RELEASE_DIR/analytics-service.jar"
+          cp notification-service/target/notification-service-1.0.0-SNAPSHOT.jar "$RELEASE_DIR/notification-service.jar"
+
+          # Copy frontend builds (only what's needed to run)
+          mkdir -p "$RELEASE_DIR/gateway-portal"
+          cp -r gateway-portal/.next "$RELEASE_DIR/gateway-portal/.next"
+          cp gateway-portal/package.json "$RELEASE_DIR/gateway-portal/"
+          cp gateway-portal/next.config.mjs "$RELEASE_DIR/gateway-portal/" 2>/dev/null || true
+          cp gateway-portal/next.config.js "$RELEASE_DIR/gateway-portal/" 2>/dev/null || true
+          # Copy public dir if exists
+          cp -r gateway-portal/public "$RELEASE_DIR/gateway-portal/public" 2>/dev/null || true
+
+          mkdir -p "$RELEASE_DIR/gateway-admin"
+          cp -r gateway-admin/.next "$RELEASE_DIR/gateway-admin/.next"
+          cp gateway-admin/package.json "$RELEASE_DIR/gateway-admin/"
+          cp gateway-admin/next.config.mjs "$RELEASE_DIR/gateway-admin/" 2>/dev/null || true
+          cp gateway-admin/next.config.js "$RELEASE_DIR/gateway-admin/" 2>/dev/null || true
+          cp -r gateway-admin/public "$RELEASE_DIR/gateway-admin/public" 2>/dev/null || true
+
+          # Copy node_modules needed for Next.js runtime
+          cp -r node_modules "$RELEASE_DIR/node_modules"
+          cp package.json "$RELEASE_DIR/"
+
+          # Copy infrastructure files
+          mkdir -p "$RELEASE_DIR/deploy/docker"
+          cp deploy/docker/docker-compose.yml "$RELEASE_DIR/deploy/docker/"
+          cp deploy/docker/.env "$RELEASE_DIR/deploy/docker/" 2>/dev/null || true
+          cp deploy/docker/.env.example "$RELEASE_DIR/deploy/docker/" 2>/dev/null || true
+
+          # Copy scripts
+          cp setup.sh "$RELEASE_DIR/"
+          cp start.sh "$RELEASE_DIR/"
+          cp cleanup.sh "$RELEASE_DIR/"
+
+          # Create tarball
+          tar -czf "waterwall-${{ steps.version.outputs.VERSION }}.tar.gz" "$RELEASE_DIR"
+
+          echo "TARBALL=waterwall-${{ steps.version.outputs.VERSION }}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Waterwall ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: ${{ env.TARBALL }}
