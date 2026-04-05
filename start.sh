@@ -152,6 +152,8 @@ done
 # -----------------------------------------------
 # 7. Start frontends
 # -----------------------------------------------
+mkdir -p logs
+
 # Build if .next dirs don't exist
 if [[ ! -d "gateway-portal/.next" || ! -d "gateway-admin/.next" ]]; then
   step "Building frontends"
@@ -159,7 +161,11 @@ if [[ ! -d "gateway-portal/.next" || ! -d "gateway-admin/.next" ]]; then
   export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
   export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
   export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
-  npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log" || warn "Frontend build failed — see logs/frontend-build.log"
+  if ! npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
+    warn "Frontend build failed — falling back to dev mode"
+    sed -i 's|"next start -p 3000"|"next dev -p 3000"|' "$PROJECT_ROOT/ecosystem.config.js"
+    sed -i 's|"next start -p 3001"|"next dev -p 3001"|' "$PROJECT_ROOT/ecosystem.config.js"
+  fi
 fi
 
 pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-portal

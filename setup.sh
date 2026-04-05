@@ -577,24 +577,29 @@ log "PM2 ecosystem file created"
 # -----------------------------------------------
 step "Building frontends"
 
+mkdir -p logs
+
 export NEXT_PUBLIC_API_URL="http://localhost:8082"
 export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
 export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
 export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
 
+BUILD_OK=false
 if npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
+  BUILD_OK=true
   log "Frontend production build complete"
 else
   warn "Production build failed — see logs/frontend-build.log"
   warn "Frontends will start in dev mode"
+  # Patch ecosystem to use dev mode instead of production start
+  sed -i 's|"next start -p 3000"|"next dev -p 3000"|' "$PROJECT_ROOT/ecosystem.config.js"
+  sed -i 's|"next start -p 3001"|"next dev -p 3001"|' "$PROJECT_ROOT/ecosystem.config.js"
 fi
 
 # -----------------------------------------------
 # 8. Start all services with PM2
 # -----------------------------------------------
 step "Starting all services with PM2"
-
-mkdir -p logs
 
 # Stop any existing PM2 waterwall processes
 pm2 delete all 2>/dev/null || true
