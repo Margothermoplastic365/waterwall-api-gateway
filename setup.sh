@@ -35,29 +35,27 @@ REPO_DIR="waterwall-api-gateway"
 SKIP_CLONE=false
 BUILD_FROM_SOURCE=false
 RELEASE_VERSION=""
+SERVER_HOST=""
 
-for arg in "$@"; do
-  case "$arg" in
+# Parse arguments
+args=("$@")
+for i in $(seq 0 $((${#args[@]} - 1))); do
+  case "${args[$i]}" in
     --no-clone) SKIP_CLONE=true; BUILD_FROM_SOURCE=true ;;
     --build-from-source) BUILD_FROM_SOURCE=true ;;
-    --version) shift_next=true ;;
-    *)
-      if [[ "${shift_next:-false}" == true ]]; then
-        RELEASE_VERSION="$arg"
-        shift_next=false
+    --version)
+      next=$((i + 1))
+      if [[ $next -lt ${#args[@]} ]]; then
+        RELEASE_VERSION="${args[$next]}"
+      fi
+      ;;
+    --host)
+      next=$((i + 1))
+      if [[ $next -lt ${#args[@]} ]]; then
+        SERVER_HOST="${args[$next]}"
       fi
       ;;
   esac
-done
-
-# Handle --version as next arg
-for i in $(seq 1 $#); do
-  if [[ "${!i}" == "--version" ]]; then
-    next=$((i + 1))
-    if [[ $next -le $# ]]; then
-      RELEASE_VERSION="${!next}"
-    fi
-  fi
 done
 
 # -----------------------------------------------
@@ -566,7 +564,59 @@ wait_for_service "rabbitmq" "docker compose exec -T rabbitmq rabbitmqctl status"
 cd "$PROJECT_ROOT"
 
 # -----------------------------------------------
-# 4. Generate PM2 ecosystem file
+# 4. Configure server address
+# -----------------------------------------------
+step "Server configuration"
+
+# Auto-detect server IP if not provided
+if [[ -z "$SERVER_HOST" ]]; then
+  DETECTED_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+  DETECTED_HOST=$(hostname -f 2>/dev/null || true)
+
+  echo ""
+  echo "  The frontend needs your server's public IP or domain name"
+  echo "  so browsers can reach the backend APIs."
+  echo ""
+  if [[ -n "$DETECTED_IP" ]]; then
+    echo "  Detected IP: $DETECTED_IP"
+  fi
+  echo ""
+  echo -n "  Enter server IP or domain (e.g. 203.0.113.10 or api.example.com): "
+  read -r SERVER_HOST
+
+  # Use detected IP as fallback
+  if [[ -z "$SERVER_HOST" ]]; then
+    SERVER_HOST="${DETECTED_IP:-localhost}"
+    warn "No input — using $SERVER_HOST"
+  fi
+fi
+
+# Determine protocol (use https if it looks like a domain)
+if [[ "$SERVER_HOST" == *"."* && ! "$SERVER_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  SERVER_PROTO="https"
+else
+  SERVER_PROTO="http"
+fi
+
+API_BASE="${SERVER_PROTO}://${SERVER_HOST}"
+log "Server address: $API_BASE"
+
+# Replace localhost URLs in pre-built frontend files
+if [[ -d "$PROJECT_ROOT/gateway-portal/.next" ]]; then
+  step "Configuring frontend API endpoints"
+
+  # Replace in all JS chunks
+  find "$PROJECT_ROOT/gateway-portal/.next" -name "*.js" -type f -exec \
+    sed -i "s|http://localhost:8081|${API_BASE}:8081|g; s|http://localhost:8082|${API_BASE}:8082|g; s|http://localhost:8080|${API_BASE}:8080|g; s|http://localhost:8083|${API_BASE}:8083|g" {} +
+
+  find "$PROJECT_ROOT/gateway-admin/.next" -name "*.js" -type f -exec \
+    sed -i "s|http://localhost:8081|${API_BASE}:8081|g; s|http://localhost:8082|${API_BASE}:8082|g; s|http://localhost:8080|${API_BASE}:8080|g; s|http://localhost:8083|${API_BASE}:8083|g" {} +
+
+  log "Frontend endpoints updated to $API_BASE"
+fi
+
+# -----------------------------------------------
+# 5. Generate PM2 ecosystem file
 # -----------------------------------------------
 step "Configuring PM2"
 
@@ -676,10 +726,10 @@ module.exports = {
       restart_delay: 3000,
       env: {
         PORT: 3000,
-        NEXT_PUBLIC_API_URL: "http://localhost:8082",
-        NEXT_PUBLIC_IDENTITY_URL: "http://localhost:8081",
-        NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8080",
-        NEXT_PUBLIC_ANALYTICS_URL: "http://localhost:8083"
+        NEXT_PUBLIC_API_URL: "${API_BASE}:8082",
+        NEXT_PUBLIC_IDENTITY_URL: "${API_BASE}:8081",
+        NEXT_PUBLIC_GATEWAY_URL: "${API_BASE}:8080",
+        NEXT_PUBLIC_ANALYTICS_URL: "${API_BASE}:8083"
       },
       log_file: "${PROJECT_ROOT}/logs/gateway-portal.log",
       error_file: "${PROJECT_ROOT}/logs/gateway-portal-error.log",
@@ -697,10 +747,10 @@ module.exports = {
       restart_delay: 3000,
       env: {
         PORT: 3001,
-        NEXT_PUBLIC_API_URL: "http://localhost:8082",
-        NEXT_PUBLIC_IDENTITY_URL: "http://localhost:8081",
-        NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8080",
-        NEXT_PUBLIC_ANALYTICS_URL: "http://localhost:8083"
+        NEXT_PUBLIC_API_URL: "${API_BASE}:8082",
+        NEXT_PUBLIC_IDENTITY_URL: "${API_BASE}:8081",
+        NEXT_PUBLIC_GATEWAY_URL: "${API_BASE}:8080",
+        NEXT_PUBLIC_ANALYTICS_URL: "${API_BASE}:8083"
       },
       log_file: "${PROJECT_ROOT}/logs/gateway-admin.log",
       error_file: "${PROJECT_ROOT}/logs/gateway-admin-error.log",
@@ -714,15 +764,15 @@ PMEOF
 log "PM2 ecosystem file created"
 
 # -----------------------------------------------
-# 5. Build frontends (only if building from source and not already built)
+# 6. Build frontends (only if building from source and not already built)
 # -----------------------------------------------
 if [[ "$BUILD_FROM_SOURCE" == true && ! -d "$PROJECT_ROOT/gateway-portal/.next" ]]; then
   step "Building frontends"
 
-  export NEXT_PUBLIC_API_URL="http://localhost:8082"
-  export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
-  export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
-  export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
+  export NEXT_PUBLIC_API_URL="${API_BASE}:8082"
+  export NEXT_PUBLIC_IDENTITY_URL="${API_BASE}:8081"
+  export NEXT_PUBLIC_GATEWAY_URL="${API_BASE}:8080"
+  export NEXT_PUBLIC_ANALYTICS_URL="${API_BASE}:8083"
 
   if npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
     log "Frontend production build complete"
@@ -737,7 +787,7 @@ elif [[ -d "$PROJECT_ROOT/gateway-portal/.next" ]]; then
 fi
 
 # -----------------------------------------------
-# 6. Start all services with PM2
+# 7. Start all services with PM2
 # -----------------------------------------------
 step "Starting all services with PM2"
 
@@ -802,7 +852,7 @@ log "Setting up PM2 startup on boot..."
 pm2 startup 2>/dev/null || warn "Run the pm2 startup command printed above as root to enable boot persistence"
 
 # -----------------------------------------------
-# 7. Summary
+# 8. Summary
 # -----------------------------------------------
 step "Waterwall API Gateway is running (managed by PM2)"
 

@@ -144,10 +144,14 @@ chmod +x setup.sh
 sudo bash setup.sh
 ```
 
-To install a specific version:
+The script will prompt for your server's IP or domain name so browsers can reach the APIs.
+
+To skip the prompt:
 
 ```bash
-sudo bash setup.sh --version v1.0.0
+sudo bash setup.sh --host 203.0.113.10
+sudo bash setup.sh --host api.example.com
+sudo bash setup.sh --version v1.0.0 --host api.example.com
 ```
 
 The script will:
