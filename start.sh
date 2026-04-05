@@ -73,25 +73,42 @@ step "Starting infrastructure (PostgreSQL + RabbitMQ)"
 cd "$PROJECT_ROOT/deploy/docker"
 docker compose up -d postgres rabbitmq 2>/dev/null
 
-log "Waiting for PostgreSQL..."
-for i in $(seq 1 30); do
-  if docker compose exec -T postgres pg_isready -U postgres &>/dev/null; then
-    log "PostgreSQL is ready"
-    break
-  fi
-  [[ $i -eq 30 ]] && err "PostgreSQL failed to start"
-  sleep 1
-done
+wait_for_service() {
+  local name=$1
+  local check_cmd=$2
+  local max_wait=90
 
-log "Waiting for RabbitMQ..."
-for i in $(seq 1 30); do
-  if docker compose exec -T rabbitmq rabbitmqctl status &>/dev/null; then
-    log "RabbitMQ is ready"
-    break
-  fi
-  [[ $i -eq 30 ]] && err "RabbitMQ failed to start"
-  sleep 1
-done
+  echo -n "  Waiting for $name... "
+  for i in $(seq 1 $max_wait); do
+    if eval "$check_cmd" &>/dev/null; then
+      echo -e "${GREEN}ready (${i}s)${NC}"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo -e "${YELLOW}timeout${NC}"
+  warn "$name not ready after ${max_wait}s — restarting container..."
+  docker compose restart "$name" 2>/dev/null || true
+  sleep 3
+
+  echo -n "  Retrying $name... "
+  for i in $(seq 1 60); do
+    if eval "$check_cmd" &>/dev/null; then
+      echo -e "${GREEN}ready (${i}s)${NC}"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo -e "${RED}failed${NC}"
+  warn "$name did not start. Check: docker compose logs $name"
+  warn "Continuing anyway — the service may start shortly..."
+  return 0
+}
+
+wait_for_service "postgres" "docker compose exec -T postgres pg_isready -U postgres"
+wait_for_service "rabbitmq" "docker compose exec -T rabbitmq rabbitmqctl status"
 
 cd "$PROJECT_ROOT"
 

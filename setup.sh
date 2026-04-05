@@ -511,25 +511,44 @@ cd "$PROJECT_ROOT/deploy/docker"
 docker compose down 2>/dev/null || true
 docker compose up -d postgres rabbitmq
 
-log "Waiting for PostgreSQL to be ready..."
-for i in $(seq 1 30); do
-  if docker compose exec -T postgres pg_isready -U postgres &>/dev/null; then
-    log "PostgreSQL is ready"
-    break
-  fi
-  if [[ $i -eq 30 ]]; then err "PostgreSQL failed to start within 30s"; fi
-  sleep 1
-done
+wait_for_service() {
+  local name=$1
+  local check_cmd=$2
+  local max_wait=90
+  local attempt=1
 
-log "Waiting for RabbitMQ to be ready..."
-for i in $(seq 1 30); do
-  if docker compose exec -T rabbitmq rabbitmqctl status &>/dev/null; then
-    log "RabbitMQ is ready"
-    break
-  fi
-  if [[ $i -eq 30 ]]; then err "RabbitMQ failed to start within 30s"; fi
-  sleep 1
-done
+  echo -n "  Waiting for $name... "
+  for i in $(seq 1 $max_wait); do
+    if eval "$check_cmd" &>/dev/null; then
+      echo -e "${GREEN}ready (${i}s)${NC}"
+      return 0
+    fi
+    sleep 1
+  done
+
+  # First retry: restart the container
+  echo -e "${YELLOW}timeout${NC}"
+  warn "$name not ready after ${max_wait}s — restarting container..."
+  docker compose restart "$name" 2>/dev/null || true
+  sleep 3
+
+  echo -n "  Retrying $name... "
+  for i in $(seq 1 60); do
+    if eval "$check_cmd" &>/dev/null; then
+      echo -e "${GREEN}ready (${i}s)${NC}"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo -e "${RED}failed${NC}"
+  warn "$name did not start. Check logs: docker compose logs $name"
+  warn "Continuing anyway — the service may start shortly..."
+  return 0
+}
+
+wait_for_service "postgres" "docker compose exec -T postgres pg_isready -U postgres"
+wait_for_service "rabbitmq" "docker compose exec -T rabbitmq rabbitmqctl status"
 
 cd "$PROJECT_ROOT"
 
