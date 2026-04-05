@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Waterwall API Gateway — Start Script
-# Starts infrastructure and all services (assumes setup.sh has already run).
+# Waterwall API Gateway — Start Script (PM2)
+# Starts infrastructure and all services using PM2.
+# Assumes setup.sh has already run.
 #
 # Usage:
 #   ./start.sh              # start everything
@@ -22,7 +23,6 @@ err()   { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step()  { echo -e "\n${CYAN}==> $1${NC}"; }
 
 REBUILD=false
-PIDS=()
 
 for arg in "$@"; do
   case "$arg" in
@@ -33,24 +33,14 @@ done
 # Resolve project root (where this script lives)
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_ROOT"
-
-cleanup() {
-  echo ""
-  warn "Shutting down services..."
-  for pid in "${PIDS[@]}"; do
-    kill "$pid" 2>/dev/null || true
-  done
-  wait 2>/dev/null
-  log "All services stopped."
-}
-trap cleanup EXIT INT TERM
+export PROJECT_ROOT
 
 # -----------------------------------------------
 # 1. Verify prerequisites exist
 # -----------------------------------------------
 step "Verifying environment"
 
-for cmd in java mvn node npm docker; do
+for cmd in java mvn node npm docker pm2; do
   command -v "$cmd" &>/dev/null || err "$cmd not found — run setup.sh first"
 done
 
@@ -60,6 +50,9 @@ if [[ "$REBUILD" == false ]]; then
     [[ -f "$jar/target/${jar}-1.0.0-SNAPSHOT.jar" ]] || { warn "JARs not found — rebuilding..."; REBUILD=true; break; }
   done
 fi
+
+# Check ecosystem file exists
+[[ -f "$PROJECT_ROOT/ecosystem.config.js" ]] || err "ecosystem.config.js not found — run setup.sh first"
 
 log "Environment OK"
 
@@ -103,73 +96,81 @@ done
 cd "$PROJECT_ROOT"
 
 # -----------------------------------------------
-# 4. Start backend services
+# 4. Stop existing PM2 processes
 # -----------------------------------------------
-step "Starting backend services"
+step "Starting services with PM2"
 
 mkdir -p logs
+pm2 delete all 2>/dev/null || true
 
-start_service() {
-  local name=$1
-  local jar=$2
-  local port=$3
+# -----------------------------------------------
+# 5. Start identity-service first (other services depend on it)
+# -----------------------------------------------
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only identity-service
 
-  echo -n "  Starting $name (port $port)... "
-  java -jar "$jar" --spring.profiles.active=dev > "logs/${name}.log" 2>&1 &
-  PIDS+=($!)
+echo -n "  Waiting for identity-service... "
+for i in $(seq 1 90); do
+  if curl -sf "http://localhost:8081/actuator/health/liveness" &>/dev/null; then
+    echo -e "${GREEN}ready${NC}"
+    break
+  fi
+  if [[ $i -eq 90 ]]; then
+    echo -e "${RED}timeout${NC}"
+    warn "identity-service did not start within 90s — check: pm2 logs identity-service"
+  fi
+  sleep 1
+done
 
-  for i in $(seq 1 60); do
-    if curl -sf "http://localhost:${port}/actuator/health/liveness" &>/dev/null; then
-      echo -e "${GREEN}ready${NC}"
-      return 0
+# -----------------------------------------------
+# 6. Start remaining services
+# -----------------------------------------------
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only management-api
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-runtime
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only analytics-service
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only notification-service
+
+echo -n "  Waiting for backend services... "
+for i in $(seq 1 60); do
+  READY=true
+  for port in 8082 8080 8083 8084; do
+    if ! curl -sf "http://localhost:${port}/actuator/health/liveness" &>/dev/null; then
+      READY=false
+      break
     fi
-    sleep 1
   done
-  echo -e "${RED}timeout${NC}"
-  warn "$name did not start within 60s — check logs/${name}.log"
-}
-
-start_service "identity-service"     "identity-service/target/identity-service-1.0.0-SNAPSHOT.jar"         8081
-start_service "management-api"       "management-api/target/management-api-1.0.0-SNAPSHOT.jar"             8082
-start_service "gateway-runtime"      "gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar"           8080
-start_service "analytics-service"    "analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar"       8083
-start_service "notification-service" "notification-service/target/notification-service-1.0.0-SNAPSHOT.jar" 8084
+  if [[ "$READY" == true ]]; then
+    echo -e "${GREEN}all ready${NC}"
+    break
+  fi
+  if [[ $i -eq 60 ]]; then
+    echo -e "${YELLOW}some services still starting${NC}"
+    warn "Check status with: pm2 status"
+  fi
+  sleep 1
+done
 
 # -----------------------------------------------
-# 5. Start frontends
+# 7. Start frontends
 # -----------------------------------------------
-step "Starting frontends"
-
-export NEXT_PUBLIC_API_URL="http://localhost:8082"
-export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
-export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
-export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
-
-# Use production build if available, otherwise dev mode
-if [[ -d "gateway-portal/.next" && -d "gateway-admin/.next" ]]; then
-  cd "$PROJECT_ROOT/gateway-portal"
-  npx next start -p 3000 > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
-  PIDS+=($!)
-  cd "$PROJECT_ROOT/gateway-admin"
-  PORT=3001 npx next start -p 3001 > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
-  PIDS+=($!)
-  log "Frontends starting (production mode)"
-else
-  cd "$PROJECT_ROOT"
-  npm run dev:portal > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
-  PIDS+=($!)
-  npm run dev:admin > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
-  PIDS+=($!)
-  log "Frontends starting (dev mode)"
+# Build if .next dirs don't exist
+if [[ ! -d "gateway-portal/.next" || ! -d "gateway-admin/.next" ]]; then
+  step "Building frontends"
+  export NEXT_PUBLIC_API_URL="http://localhost:8082"
+  export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
+  export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
+  export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
+  npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log" || warn "Frontend build failed — see logs/frontend-build.log"
 fi
 
-cd "$PROJECT_ROOT"
-sleep 3
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-portal
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-admin
+
+pm2 save
 
 # -----------------------------------------------
-# 6. Summary
+# 8. Summary
 # -----------------------------------------------
-step "Waterwall API Gateway is running"
+step "Waterwall API Gateway is running (managed by PM2)"
 
 echo ""
 echo "  Backend:"
@@ -190,8 +191,14 @@ echo "  Login:"
 echo "    admin@gateway.local / changeme"
 echo "    alice@acme-corp.com / password123"
 echo ""
+echo "  PM2 Commands:"
+echo "    pm2 status                  # view all services"
+echo "    pm2 logs <service-name>     # tail logs"
+echo "    pm2 restart all             # restart everything"
+echo "    pm2 stop all                # stop everything"
+echo "    pm2 monit                   # monitoring dashboard"
+echo ""
 echo "  Logs: $PROJECT_ROOT/logs/"
 echo ""
-log "Press Ctrl+C to stop all services"
 
-wait
+pm2 status

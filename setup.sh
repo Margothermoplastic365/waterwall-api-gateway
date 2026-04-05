@@ -2,7 +2,7 @@
 # =============================================================================
 # Waterwall API Gateway — Full Setup Script
 # Automatically installs prerequisites, clones the repo, starts infrastructure,
-# builds and runs all services.
+# builds and runs all services using PM2 for process management.
 #
 # Supported OS: Ubuntu/Debian, Fedora, CentOS, Arch Linux, macOS (Homebrew)
 # Windows: prints manual install links for missing tools
@@ -29,23 +29,12 @@ step()  { echo -e "\n${CYAN}==> $1${NC}"; }
 REPO_URL="https://github.com/DevLink-Tech-Academy/waterwall-api-gateway.git"
 REPO_DIR="waterwall-api-gateway"
 SKIP_CLONE=false
-PIDS=()
 
 for arg in "$@"; do
   case "$arg" in
     --no-clone) SKIP_CLONE=true ;;
   esac
 done
-
-cleanup() {
-  warn "Shutting down services..."
-  for pid in "${PIDS[@]}"; do
-    kill "$pid" 2>/dev/null || true
-  done
-  wait 2>/dev/null
-  log "All services stopped."
-}
-trap cleanup EXIT INT TERM
 
 # -----------------------------------------------
 # 1. Detect OS and package manager
@@ -353,6 +342,15 @@ if ! docker compose version &>/dev/null; then
 fi
 log "Docker Compose is available"
 
+# Install PM2 globally
+if ! command -v pm2 &>/dev/null; then
+  warn "PM2 not found — installing globally..."
+  sudo npm install -g pm2
+  log "PM2 installed successfully"
+else
+  log "PM2 is installed"
+fi
+
 # Verify Java version
 get_java_major() {
   local ver_line
@@ -444,82 +442,224 @@ npm install --silent
 log "Frontend dependencies installed"
 
 # -----------------------------------------------
-# 6. Start backend services
+# 6. Generate PM2 ecosystem file
 # -----------------------------------------------
-step "Starting backend services"
+step "Configuring PM2"
 
-start_service() {
-  local name=$1
-  local jar=$2
-  local port=$3
+cat > "$PROJECT_ROOT/ecosystem.config.js" << 'PMEOF'
+module.exports = {
+  apps: [
+    {
+      name: "identity-service",
+      script: "java",
+      args: "-jar identity-service/target/identity-service-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
+      cwd: process.env.PROJECT_ROOT || ".",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      env: { SERVER_PORT: 8081 },
+      log_file: "logs/identity-service.log",
+      error_file: "logs/identity-service-error.log",
+      out_file: "logs/identity-service-out.log",
+      time: true
+    },
+    {
+      name: "management-api",
+      script: "java",
+      args: "-jar management-api/target/management-api-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
+      cwd: process.env.PROJECT_ROOT || ".",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      env: { SERVER_PORT: 8082 },
+      log_file: "logs/management-api.log",
+      error_file: "logs/management-api-error.log",
+      out_file: "logs/management-api-out.log",
+      time: true
+    },
+    {
+      name: "gateway-runtime",
+      script: "java",
+      args: "-jar gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
+      cwd: process.env.PROJECT_ROOT || ".",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      env: { SERVER_PORT: 8080 },
+      log_file: "logs/gateway-runtime.log",
+      error_file: "logs/gateway-runtime-error.log",
+      out_file: "logs/gateway-runtime-out.log",
+      time: true
+    },
+    {
+      name: "analytics-service",
+      script: "java",
+      args: "-jar analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
+      cwd: process.env.PROJECT_ROOT || ".",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      env: { SERVER_PORT: 8083 },
+      log_file: "logs/analytics-service.log",
+      error_file: "logs/analytics-service-error.log",
+      out_file: "logs/analytics-service-out.log",
+      time: true
+    },
+    {
+      name: "notification-service",
+      script: "java",
+      args: "-jar notification-service/target/notification-service-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev",
+      cwd: process.env.PROJECT_ROOT || ".",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 5000,
+      env: { SERVER_PORT: 8084 },
+      log_file: "logs/notification-service.log",
+      error_file: "logs/notification-service-error.log",
+      out_file: "logs/notification-service-out.log",
+      time: true
+    },
+    {
+      name: "gateway-portal",
+      script: "npx",
+      args: "next start -p 3000",
+      cwd: process.env.PROJECT_ROOT ? process.env.PROJECT_ROOT + "/gateway-portal" : "./gateway-portal",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 3000,
+      env: {
+        PORT: 3000,
+        NEXT_PUBLIC_API_URL: "http://localhost:8082",
+        NEXT_PUBLIC_IDENTITY_URL: "http://localhost:8081",
+        NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8080",
+        NEXT_PUBLIC_ANALYTICS_URL: "http://localhost:8083"
+      },
+      log_file: "logs/gateway-portal.log",
+      error_file: "logs/gateway-portal-error.log",
+      out_file: "logs/gateway-portal-out.log",
+      time: true
+    },
+    {
+      name: "gateway-admin",
+      script: "npx",
+      args: "next start -p 3001",
+      cwd: process.env.PROJECT_ROOT ? process.env.PROJECT_ROOT + "/gateway-admin" : "./gateway-admin",
+      interpreter: "none",
+      autorestart: true,
+      max_restarts: 5,
+      restart_delay: 3000,
+      env: {
+        PORT: 3001,
+        NEXT_PUBLIC_API_URL: "http://localhost:8082",
+        NEXT_PUBLIC_IDENTITY_URL: "http://localhost:8081",
+        NEXT_PUBLIC_GATEWAY_URL: "http://localhost:8080",
+        NEXT_PUBLIC_ANALYTICS_URL: "http://localhost:8083"
+      },
+      log_file: "logs/gateway-admin.log",
+      error_file: "logs/gateway-admin-error.log",
+      out_file: "logs/gateway-admin-out.log",
+      time: true
+    }
+  ]
+};
+PMEOF
 
-  echo -n "  Starting $name (port $port)... "
-  java -jar "$jar" --spring.profiles.active=dev > "logs/${name}.log" 2>&1 &
-  PIDS+=($!)
-
-  for i in $(seq 1 60); do
-    if curl -sf "http://localhost:${port}/actuator/health/liveness" &>/dev/null; then
-      echo -e "${GREEN}ready${NC}"
-      return 0
-    fi
-    sleep 1
-  done
-  echo -e "${RED}timeout${NC}"
-  warn "$name did not become healthy within 60s — check logs/${name}.log"
-}
-
-mkdir -p logs
-
-start_service "identity-service"     "identity-service/target/identity-service-1.0.0-SNAPSHOT.jar"         8081
-start_service "management-api"       "management-api/target/management-api-1.0.0-SNAPSHOT.jar"             8082
-start_service "gateway-runtime"      "gateway-runtime/target/gateway-runtime-1.0.0-SNAPSHOT.jar"           8080
-start_service "analytics-service"    "analytics-service/target/analytics-service-1.0.0-SNAPSHOT.jar"       8083
-start_service "notification-service" "notification-service/target/notification-service-1.0.0-SNAPSHOT.jar" 8084
+log "PM2 ecosystem file created"
 
 # -----------------------------------------------
-# 7. Start frontends
+# 7. Build frontends
 # -----------------------------------------------
-step "Building and starting frontends"
+step "Building frontends"
 
-# Set env vars needed by Next.js build
 export NEXT_PUBLIC_API_URL="http://localhost:8082"
 export NEXT_PUBLIC_IDENTITY_URL="http://localhost:8081"
 export NEXT_PUBLIC_GATEWAY_URL="http://localhost:8080"
 export NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8083"
 
-BUILD_OK=false
 if npm run build:all 2>"$PROJECT_ROOT/logs/frontend-build.log"; then
-  BUILD_OK=true
   log "Frontend production build complete"
 else
   warn "Production build failed — see logs/frontend-build.log"
+  warn "Frontends will start in dev mode"
 fi
 
-if [[ "$BUILD_OK" == true ]]; then
-  # Production mode
-  cd "$PROJECT_ROOT/gateway-portal"
-  npx next start -p 3000 > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
-  PIDS+=($!)
-  cd "$PROJECT_ROOT/gateway-admin"
-  PORT=3001 npx next start -p 3001 > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
-  PIDS+=($!)
-else
-  # Dev mode fallback
-  cd "$PROJECT_ROOT"
-  npm run dev:portal > "$PROJECT_ROOT/logs/gateway-portal.log" 2>&1 &
-  PIDS+=($!)
-  npm run dev:admin > "$PROJECT_ROOT/logs/gateway-admin.log" 2>&1 &
-  PIDS+=($!)
-fi
+# -----------------------------------------------
+# 8. Start all services with PM2
+# -----------------------------------------------
+step "Starting all services with PM2"
 
-cd "$PROJECT_ROOT"
-log "Frontends starting..."
-sleep 5
+mkdir -p logs
+
+# Stop any existing PM2 waterwall processes
+pm2 delete all 2>/dev/null || true
+
+# Export project root for ecosystem file
+export PROJECT_ROOT
+
+# Start identity-service first and wait for it
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only identity-service
+echo -n "  Waiting for identity-service... "
+for i in $(seq 1 90); do
+  if curl -sf "http://localhost:8081/actuator/health/liveness" &>/dev/null; then
+    echo -e "${GREEN}ready${NC}"
+    break
+  fi
+  if [[ $i -eq 90 ]]; then
+    echo -e "${RED}timeout${NC}"
+    warn "identity-service did not become healthy within 90s — check: pm2 logs identity-service"
+  fi
+  sleep 1
+done
+
+# Start remaining backend services
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only management-api
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-runtime
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only analytics-service
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only notification-service
+
+# Wait for backend services
+echo -n "  Waiting for backend services... "
+for i in $(seq 1 60); do
+  READY=true
+  for port in 8082 8080 8083 8084; do
+    if ! curl -sf "http://localhost:${port}/actuator/health/liveness" &>/dev/null; then
+      READY=false
+      break
+    fi
+  done
+  if [[ "$READY" == true ]]; then
+    echo -e "${GREEN}all ready${NC}"
+    break
+  fi
+  if [[ $i -eq 60 ]]; then
+    echo -e "${YELLOW}some services still starting${NC}"
+    warn "Check status with: pm2 status"
+  fi
+  sleep 1
+done
+
+# Start frontends
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-portal
+pm2 start "$PROJECT_ROOT/ecosystem.config.js" --only gateway-admin
+
+# Save PM2 process list so it survives reboot
+pm2 save
+
+# Setup PM2 startup script (survives reboot)
+echo ""
+log "Setting up PM2 startup on boot..."
+pm2 startup 2>/dev/null || warn "Run the pm2 startup command printed above as root to enable boot persistence"
 
 # -----------------------------------------------
-# 8. Summary
+# 9. Summary
 # -----------------------------------------------
-step "Waterwall API Gateway is running"
+step "Waterwall API Gateway is running (managed by PM2)"
 
 echo ""
 echo "  Backend Services:"
@@ -540,9 +680,14 @@ echo "  Login credentials:"
 echo "    Admin:  admin@gateway.local / changeme"
 echo "    Users:  alice@acme-corp.com / password123  (and other sample users)"
 echo ""
+echo "  PM2 Commands:"
+echo "    pm2 status                  # view all services"
+echo "    pm2 logs <service-name>     # tail logs for a service"
+echo "    pm2 restart all             # restart everything"
+echo "    pm2 stop all                # stop everything"
+echo "    pm2 monit                   # real-time monitoring dashboard"
+echo ""
 echo "  Logs directory: $PROJECT_ROOT/logs/"
 echo ""
-log "Press Ctrl+C to stop all services"
 
-# Keep script alive
-wait
+pm2 status
