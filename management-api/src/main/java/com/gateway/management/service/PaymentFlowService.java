@@ -3,12 +3,13 @@ package com.gateway.management.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gateway.common.auth.SecurityContextHelper;
 import com.gateway.management.dto.PaymentInitResponse;
-import com.gateway.management.dto.paystack.PaystackInitializeResponse;
-import com.gateway.management.dto.paystack.PaystackVerifyResponse;
 import com.gateway.management.entity.InvoiceEntity;
 import com.gateway.management.entity.PaymentMethodEntity;
 import com.gateway.management.repository.InvoiceRepository;
 import com.gateway.management.repository.PaymentMethodRepository;
+import com.gateway.management.service.payment.PaymentProvider;
+import com.gateway.management.service.payment.PaymentProviderFactory;
+import com.gateway.management.service.payment.PaymentResult;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PaymentFlowService {
 
-    private final PaystackService paystackService;
+    private final PaymentProviderFactory paymentProviderFactory;
     private final InvoiceRepository invoiceRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final ObjectMapper objectMapper;
@@ -55,9 +56,9 @@ public class PaymentFlowService {
         // If invoice already has a paystack reference, verify it first
         if (invoice.getPaystackReference() != null) {
             try {
-                PaystackVerifyResponse existingVerification =
-                        paystackService.verifyTransaction(invoice.getPaystackReference());
-                if ("success".equals(existingVerification.getData().getStatus())) {
+                PaymentProvider provider = paymentProviderFactory.getActiveProvider();
+                PaymentResult.VerifyResult existing = provider.verifyPayment(invoice.getPaystackReference());
+                if (existing.isSuccessful()) {
                     invoice.setStatus("PAID");
                     invoice.setPaidAt(Instant.now());
                     invoiceRepository.save(invoice);
@@ -71,26 +72,24 @@ public class PaymentFlowService {
 
         String reference = "INV-" + invoiceId.toString().substring(0, 8) + "-" + System.currentTimeMillis();
 
-        PaystackInitializeResponse response = paystackService.initializeTransaction(
+        PaymentProvider provider = paymentProviderFactory.getActiveProvider();
+        PaymentResult.InitResult result = provider.initializePayment(
                 email, invoice.getTotalAmount(), invoice.getCurrency(), reference, invoiceId);
 
         invoice.setPaystackReference(reference);
         invoice.setStatus("PENDING");
         invoiceRepository.save(invoice);
 
-        return new PaymentInitResponse(
-                response.getData().getAuthorization_url(),
-                reference,
-                response.getData().getAccess_code()
-        );
+        return new PaymentInitResponse(result.getAuthorizationUrl(), reference, result.getAccessCode());
     }
 
     @Transactional
     public InvoiceEntity verifyPayment(String reference) {
-        PaystackVerifyResponse response = paystackService.verifyTransaction(reference);
+        PaymentProvider provider = paymentProviderFactory.getActiveProvider();
+        PaymentResult.VerifyResult result = provider.verifyPayment(reference);
 
-        if (!"success".equals(response.getData().getStatus())) {
-            throw new IllegalStateException("Payment not successful. Status: " + response.getData().getStatus());
+        if (!result.isSuccessful()) {
+            throw new IllegalStateException("Payment not successful. Status: " + result.getStatus());
         }
 
         InvoiceEntity invoice = invoiceRepository.findByPaystackReference(reference)
@@ -98,22 +97,20 @@ public class PaymentFlowService {
 
         invoice.setStatus("PAID");
         invoice.setPaidAt(Instant.now());
+        invoice.setDunningStatus(null);
+        invoice.setNextRetryAt(null);
 
-        // Extract authorization data and save payment method
-        PaystackVerifyResponse.PaystackAuthorization auth = response.getData().getAuthorization();
-        PaystackVerifyResponse.PaystackCustomer customer = response.getData().getCustomer();
-
-        if (auth != null) {
+        if (result.getAuthorizationCode() != null) {
             PaymentMethodEntity paymentMethod = PaymentMethodEntity.builder()
                     .consumerId(invoice.getConsumerId())
-                    .type(auth.getCard_type() != null ? auth.getCard_type() : "card")
-                    .provider("paystack")
-                    .providerRef(response.getData().getReference())
+                    .type(result.getCardType() != null ? result.getCardType() : "card")
+                    .provider(provider.getProviderName())
+                    .providerRef(result.getReference())
                     .isDefault(true)
-                    .paystackAuthorizationCode(auth.getAuthorization_code())
-                    .paystackCustomerCode(customer != null ? customer.getCustomer_code() : null)
-                    .cardLast4(auth.getLast4())
-                    .cardBrand(auth.getBrand())
+                    .paystackAuthorizationCode(result.getAuthorizationCode())
+                    .paystackCustomerCode(result.getCustomerCode())
+                    .cardLast4(result.getCardLast4())
+                    .cardBrand(result.getCardBrand())
                     .build();
             PaymentMethodEntity saved = paymentMethodRepository.save(paymentMethod);
             invoice.setPaymentMethodId(saved.getId());
@@ -163,6 +160,22 @@ public class PaymentFlowService {
 
                     invoiceRepository.save(invoice);
                     log.info("Invoice {} marked as PAID via webhook", invoice.getId());
+                }
+            });
+        } else if ("charge.failed".equals(eventType)) {
+            String reference = (String) data.get("reference");
+            log.warn("Processing charge.failed webhook for reference: {}", reference);
+
+            invoiceRepository.findByPaystackReference(reference).ifPresent(invoice -> {
+                if (!"PAID".equals(invoice.getStatus())) {
+                    invoice.setStatus("FAILED");
+                    if (invoice.getDunningStatus() == null) {
+                        invoice.setDunningStatus("ACTIVE");
+                        invoice.setDunningStartedAt(Instant.now());
+                        invoice.setRetryCount(0);
+                    }
+                    invoiceRepository.save(invoice);
+                    log.info("Invoice {} marked as FAILED via webhook, dunning initiated", invoice.getId());
                 }
             });
         } else {
