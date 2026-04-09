@@ -1,6 +1,8 @@
 package com.gateway.management.service;
 
 import com.gateway.common.auth.SecurityContextHelper;
+import com.gateway.common.events.EventPublisher;
+import com.gateway.common.events.RabbitMQExchanges;
 import com.gateway.management.entity.ConsumerAlertRuleEntity;
 import com.gateway.management.repository.ConsumerAlertRuleRepository;
 import jakarta.persistence.EntityManager;
@@ -8,6 +10,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ public class ConsumerAlertService {
 
     private final ConsumerAlertRuleRepository consumerAlertRuleRepository;
     private final EntityManager entityManager;
+    private final EventPublisher eventPublisher;
 
     // ── CRUD Operations ──────────────────────────────────────────────────
 
@@ -93,6 +97,7 @@ public class ConsumerAlertService {
      * Evaluates all enabled alert rules against current metrics.
      * Can be called from a scheduler or on-demand.
      */
+    @Scheduled(fixedDelay = 300_000, initialDelay = 120_000)
     @Transactional
     public void evaluateRules() {
         List<ConsumerAlertRuleEntity> enabledRules = consumerAlertRuleRepository.findByEnabledTrue();
@@ -109,6 +114,14 @@ public class ConsumerAlertService {
                 if (triggered) {
                     rule.setLastTriggeredAt(Instant.now());
                     consumerAlertRuleRepository.save(rule);
+                    BillingSchedulerService.BillingEvent alertEvent =
+                            BillingSchedulerService.BillingEvent.builder()
+                                    .eventType("consumer.alert_triggered")
+                                    .actorId("alert-scheduler")
+                                    .consumerId(rule.getUserId().toString())
+                                    .build();
+                    eventPublisher.publish(RabbitMQExchanges.PLATFORM_EVENTS,
+                            "consumer.alert_triggered", alertEvent);
                     log.warn("Alert rule triggered: id={}, userId={}, metric={}, current={}, condition={}, threshold={}",
                             rule.getId(), rule.getUserId(), rule.getMetric(),
                             currentValue, rule.getCondition(), rule.getThreshold());
