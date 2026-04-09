@@ -19,4 +19,6 @@ public interface SubscriptionRepository extends JpaRepository<SubscriptionEntity
     Optional<SubscriptionEntity> findByApplicationIdAndApiId(UUID applicationId, UUID apiId);
 
     List<SubscriptionEntity> findByStatus(SubStatus status);
+
+    List<SubscriptionEntity> findByExpiresAtBeforeAndStatusIn(java.time.Instant now, List<SubStatus> statuses);
 }
