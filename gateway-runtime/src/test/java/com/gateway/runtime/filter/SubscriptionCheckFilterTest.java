@@ -37,6 +37,9 @@ class SubscriptionCheckFilterTest {
     @Mock
     private FilterChain filterChain;
 
+    @Mock
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     private SubscriptionCheckFilter filter;
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
@@ -48,7 +51,7 @@ class SubscriptionCheckFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new SubscriptionCheckFilter(routeConfigService, objectMapper);
+        filter = new SubscriptionCheckFilter(routeConfigService, objectMapper, jdbcTemplate);
         request = new MockHttpServletRequest();
         request.setRequestURI("/api/test");
         response = new MockHttpServletResponse();
