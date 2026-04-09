@@ -39,12 +39,23 @@ public class BillingEventsConsumer {
 
     @RabbitListener(queues = "notification-service.billing-events")
     @Transactional
-    public void handleBillingEvent(String message) {
+    public void handleBillingEvent(org.springframework.amqp.core.Message rawMessage) {
         try {
-            Map<String, Object> event = objectMapper.readValue(message, new TypeReference<>() {});
-            String eventType = (String) event.get("eventType");
-            String consumerId = (String) event.get("consumerId");
-            String invoiceId = (String) event.get("invoiceId");
+            Map<String, Object> event;
+            byte[] body = rawMessage.getBody();
+            String content = new String(body, java.nio.charset.StandardCharsets.UTF_8);
+
+            // Handle both JSON object messages and plain string messages
+            try {
+                event = objectMapper.readValue(content, new TypeReference<>() {});
+            } catch (Exception parseEx) {
+                log.warn("Could not parse billing event as JSON: {}", content);
+                return;
+            }
+
+            String eventType = event.get("eventType") != null ? event.get("eventType").toString() : null;
+            String consumerId = event.get("consumerId") != null ? event.get("consumerId").toString() : null;
+            String invoiceId = event.get("invoiceId") != null ? event.get("invoiceId").toString() : null;
 
             if (eventType == null || consumerId == null) {
                 log.warn("Billing event missing required fields: {}", message);
