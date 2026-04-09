@@ -41,6 +41,7 @@ public class SubscriptionCheckFilter implements Filter {
 
     private final RouteConfigService routeConfigService;
     private final ObjectMapper objectMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
@@ -84,10 +85,11 @@ public class SubscriptionCheckFilter implements Filter {
 
         java.util.Optional<GatewaySubscription> subOpt = routeConfigService.getSubscription(appId, apiId, environment);
         if (subOpt.isEmpty()) {
-            log.debug("No active subscription for appId={} apiId={} env={}", appId, apiId, environment);
+            // Check if a suspended/cancelled subscription exists to give a better error message
+            String reason = lookupSubscriptionBlockReason(appId, apiId, environment);
+            log.debug("No active subscription for appId={} apiId={} env={} reason={}", appId, apiId, environment, reason);
             writeErrorResponse(response, request, HttpServletResponse.SC_FORBIDDEN,
-                    "SUBSCRIPTION_REQUIRED", "GW_403",
-                    "An active subscription is required to access this API");
+                    "SUBSCRIPTION_REQUIRED", "GW_403", reason);
             return;
         }
 
@@ -104,6 +106,35 @@ public class SubscriptionCheckFilter implements Filter {
                 appId, apiId, subscription.getPlanId());
 
         filterChain.doFilter(servletRequest, servletResponse);
+    }
+
+    private String lookupSubscriptionBlockReason(UUID appId, UUID apiId, String environment) {
+        try {
+            String sql = "SELECT status FROM gateway.subscriptions " +
+                    "WHERE application_id = ? AND api_id = ? " +
+                    (environment != null ? "AND environment_slug = ? " : "") +
+                    "ORDER BY created_at DESC LIMIT 1";
+
+            Object[] params = environment != null
+                    ? new Object[]{appId, apiId, environment}
+                    : new Object[]{appId, apiId};
+
+            java.util.List<String> statuses = jdbcTemplate.queryForList(sql, String.class, params);
+            if (!statuses.isEmpty()) {
+                String status = statuses.get(0);
+                return switch (status) {
+                    case "SUSPENDED" -> "Your subscription has been suspended due to non-payment. Please settle outstanding invoices to restore access.";
+                    case "CANCELLED" -> "Your subscription has been cancelled due to non-payment. Please create a new subscription to regain access.";
+                    case "REJECTED" -> "Your subscription request was rejected.";
+                    case "PENDING" -> "Your subscription is pending approval.";
+                    case "EXPIRED" -> "Your subscription has expired. Please renew to continue accessing this API.";
+                    default -> "An active subscription is required to access this API.";
+                };
+            }
+        } catch (Exception e) {
+            log.debug("Failed to lookup subscription block reason: {}", e.getMessage());
+        }
+        return "An active subscription is required to access this API.";
     }
 
     private GatewayAuthentication getAuthentication() {
