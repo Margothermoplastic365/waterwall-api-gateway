@@ -50,41 +50,47 @@ public class PaystackService {
         requestBody.put("callback_url", settings.getCallbackUrl());
         requestBody.put("metadata", Map.of("invoiceId", invoiceId.toString()));
 
-        String responseBody = paystackRestClient.post()
-                .uri(settings.getBaseUrl() + "/transaction/initialize")
-                .header("Authorization", "Bearer " + settings.getSecretKey())
-                .body(requestBody)
-                .retrieve()
-                .body(String.class);
-
         try {
+            String responseBody = paystackRestClient.post()
+                    .uri(settings.getBaseUrl() + "/transaction/initialize")
+                    .header("Authorization", "Bearer " + settings.getSecretKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(String.class);
+
             PaystackInitializeResponse response = objectMapper.readValue(responseBody,
                     PaystackInitializeResponse.class);
             log.info("Paystack transaction initialized - reference: {}, authorization_url: {}",
                     reference, response.getData().getAuthorization_url());
             return response;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Paystack initialize failed: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IllegalStateException("Payment provider error: " + extractPaystackMessage(e.getResponseBodyAsString()), e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Paystack initialize response", e);
+            throw new RuntimeException("Failed to initialize payment: " + e.getMessage(), e);
         }
     }
 
     public PaystackVerifyResponse verifyTransaction(String reference) {
         PaymentGatewaySettingsEntity settings = getSettings();
 
-        String responseBody = paystackRestClient.get()
-                .uri(settings.getBaseUrl() + "/transaction/verify/{reference}", reference)
-                .header("Authorization", "Bearer " + settings.getSecretKey())
-                .retrieve()
-                .body(String.class);
-
         try {
+            String responseBody = paystackRestClient.get()
+                    .uri(settings.getBaseUrl() + "/transaction/verify/{reference}", reference)
+                    .header("Authorization", "Bearer " + settings.getSecretKey())
+                    .retrieve()
+                    .body(String.class);
+
             PaystackVerifyResponse response = objectMapper.readValue(responseBody,
                     PaystackVerifyResponse.class);
             log.info("Paystack transaction verified - reference: {}, status: {}",
                     reference, response.getData().getStatus());
             return response;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Paystack verify failed: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IllegalStateException("Payment verification failed: " + extractPaystackMessage(e.getResponseBodyAsString()), e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Paystack verify response", e);
+            throw new RuntimeException("Failed to verify payment: " + e.getMessage(), e);
         }
     }
 
@@ -101,19 +107,22 @@ public class PaystackService {
         requestBody.put("currency", currency);
         requestBody.put("reference", reference);
 
-        String responseBody = paystackRestClient.post()
-                .uri(settings.getBaseUrl() + "/transaction/charge_authorization")
-                .header("Authorization", "Bearer " + settings.getSecretKey())
-                .body(requestBody)
-                .retrieve()
-                .body(String.class);
-
         try {
+            String responseBody = paystackRestClient.post()
+                    .uri(settings.getBaseUrl() + "/transaction/charge_authorization")
+                    .header("Authorization", "Bearer " + settings.getSecretKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(String.class);
+
             PaystackVerifyResponse response = objectMapper.readValue(responseBody, PaystackVerifyResponse.class);
             log.info("Paystack charge_authorization - reference: {}, status: {}", reference, response.getData().getStatus());
             return response;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Paystack charge_authorization failed: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IllegalStateException("Charge failed: " + extractPaystackMessage(e.getResponseBodyAsString()), e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Paystack charge_authorization response", e);
+            throw new RuntimeException("Failed to charge authorization: " + e.getMessage(), e);
         }
     }
 
@@ -127,19 +136,33 @@ public class PaystackService {
             requestBody.put("amount", amount.multiply(BigDecimal.valueOf(100)).longValueExact());
         }
 
-        String responseBody = paystackRestClient.post()
-                .uri(settings.getBaseUrl() + "/refund")
-                .header("Authorization", "Bearer " + settings.getSecretKey())
-                .body(requestBody)
-                .retrieve()
-                .body(String.class);
-
         try {
+            String responseBody = paystackRestClient.post()
+                    .uri(settings.getBaseUrl() + "/refund")
+                    .header("Authorization", "Bearer " + settings.getSecretKey())
+                    .body(requestBody)
+                    .retrieve()
+                    .body(String.class);
+
             Map<String, Object> response = objectMapper.readValue(responseBody, Map.class);
             log.info("Paystack refund - reference: {}, response status: {}", reference, response.get("status"));
             return response;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Paystack refund failed: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IllegalStateException("Refund failed: " + extractPaystackMessage(e.getResponseBodyAsString()), e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Paystack refund response", e);
+            throw new RuntimeException("Failed to process refund: " + e.getMessage(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractPaystackMessage(String responseBody) {
+        try {
+            Map<String, Object> body = objectMapper.readValue(responseBody, Map.class);
+            String message = (String) body.get("message");
+            return message != null ? message : responseBody;
+        } catch (Exception e) {
+            return responseBody;
         }
     }
 

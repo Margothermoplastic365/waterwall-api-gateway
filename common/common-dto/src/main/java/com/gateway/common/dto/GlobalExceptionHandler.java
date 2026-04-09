@@ -172,6 +172,58 @@ public class GlobalExceptionHandler {
     }
 
     // ---------------------------------------------------------------------------
+    // 422 — Business logic / state errors
+    // ---------------------------------------------------------------------------
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(
+            IllegalStateException ex, HttpServletRequest request) {
+
+        ApiErrorResponse body = buildResponse(
+                422,
+                "UNPROCESSABLE_ENTITY",
+                "BIZ_001",
+                ex.getMessage() != null ? ex.getMessage() : "Operation cannot be completed",
+                request.getRequestURI()
+        );
+
+        log.warn("Business logic error on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(422).body(body);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+
+        ApiErrorResponse body = buildResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "BAD_REQUEST",
+                "VAL_003",
+                ex.getMessage() != null ? ex.getMessage() : "Invalid argument",
+                request.getRequestURI()
+        );
+
+        log.warn("Invalid argument on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiErrorResponse> handleSecurityException(
+            SecurityException ex, HttpServletRequest request) {
+
+        ApiErrorResponse body = buildResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "FORBIDDEN",
+                "AUTHZ_002",
+                ex.getMessage() != null ? ex.getMessage() : "Access denied",
+                request.getRequestURI()
+        );
+
+        log.warn("Security exception on {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    // ---------------------------------------------------------------------------
     // 409 — Conflict errors
     // ---------------------------------------------------------------------------
 
