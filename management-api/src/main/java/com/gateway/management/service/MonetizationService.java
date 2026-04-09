@@ -39,6 +39,15 @@ public class MonetizationService {
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.atEndOfMonth();
 
+        // Idempotency: check if invoice already exists for this consumer+period
+        Optional<InvoiceEntity> existing = invoiceRepository
+                .findByConsumerIdAndBillingPeriodStartAndBillingPeriodEnd(consumerId, start, end);
+        if (existing.isPresent()) {
+            log.info("Invoice already exists for consumer={} period={}, returning existing invoice={}",
+                    consumerId, period, existing.get().getId());
+            return existing.get();
+        }
+
         // Query actual request count from analytics.request_logs for this consumer and period
         long requestCount = queryRequestCount(consumerId, start, end);
 

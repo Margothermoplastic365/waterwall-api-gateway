@@ -16,4 +16,11 @@ public interface InvoiceRepository extends JpaRepository<InvoiceEntity, UUID> {
     List<InvoiceEntity> findByStatus(String status);
 
     Optional<InvoiceEntity> findByPaystackReference(String paystackReference);
+
+    Optional<InvoiceEntity> findByConsumerIdAndBillingPeriodStartAndBillingPeriodEnd(
+            UUID consumerId, java.time.LocalDate billingPeriodStart, java.time.LocalDate billingPeriodEnd);
+
+    List<InvoiceEntity> findByStatusAndNextRetryAtBefore(String status, java.time.Instant now);
+
+    List<InvoiceEntity> findByDunningStatus(String dunningStatus);
 }

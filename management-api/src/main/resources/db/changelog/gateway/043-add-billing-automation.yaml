@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-043-add-invoice-unique-constraint
+      author: gateway-team
+      changes:
+        - addUniqueConstraint:
+            schemaName: gateway
+            tableName: invoices
+            columnNames: consumer_id, billing_period_start, billing_period_end
+            constraintName: uk_invoice_consumer_period
+
+  - changeSet:
+      id: gw-043-add-invoice-dunning-columns
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: invoices
+            columns:
+              - column:
+                  name: retry_count
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: next_retry_at
+                  type: timestamptz
+              - column:
+                  name: dunning_started_at
+                  type: timestamptz
+              - column:
+                  name: dunning_status
+                  type: varchar(30)
+
+  - changeSet:
+      id: gw-043-add-plan-dunning-config
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: plans
+            columns:
+              - column:
+                  name: dunning_config
+                  type: jsonb
