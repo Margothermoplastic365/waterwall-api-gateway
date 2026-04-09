@@ -163,8 +163,8 @@ public class ConsumerAlertService {
 
             // Look up the plan's included requests
             Query planQuery = entityManager.createNativeQuery(
-                    "SELECT pp.included_requests FROM gateway.pricing_plans pp " +
-                    "JOIN gateway.subscriptions s ON s.plan_id = pp.id " +
+                    "SELECT p.included_requests FROM gateway.plans p " +
+                    "JOIN gateway.subscriptions s ON s.plan_id = p.id " +
                     "WHERE s.application_id = :userId AND s.status = 'APPROVED' " +
                     "ORDER BY s.created_at DESC LIMIT 1"
             );
@@ -190,7 +190,7 @@ public class ConsumerAlertService {
     private BigDecimal fetchMonthlyCost(UUID userId, LocalDate from, LocalDate to) {
         try {
             Query query = entityManager.createNativeQuery(
-                    "SELECT COALESCE(SUM(amount), 0) FROM gateway.invoices " +
+                    "SELECT COALESCE(SUM(total_amount), 0) FROM gateway.invoices " +
                     "WHERE consumer_id = :userId " +
                     "AND billing_period_start >= CAST(:from AS date) " +
                     "AND billing_period_start <= CAST(:to AS date)"
