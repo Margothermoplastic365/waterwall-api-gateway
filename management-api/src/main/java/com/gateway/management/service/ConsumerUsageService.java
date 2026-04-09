@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
@@ -584,40 +583,7 @@ public class ConsumerUsageService {
         return null;
     }
 
-    /**
-     * Calculates cost based on the pricing model, matching the logic in MonetizationService.
-     */
     private BigDecimal calculateCost(PlanEntity plan, long requestCount) {
-        if (plan == null) {
-            return BigDecimal.ZERO;
-        }
-
-        String model = plan.getPricingModel() != null ? plan.getPricingModel().toUpperCase() : "FREE";
-        BigDecimal priceAmount = plan.getPriceAmount() != null ? plan.getPriceAmount() : BigDecimal.ZERO;
-        BigDecimal overageRate = plan.getOverageRate() != null ? plan.getOverageRate() : BigDecimal.ZERO;
-        long includedRequests = plan.getIncludedRequests() != null ? plan.getIncludedRequests() : 0L;
-
-        return switch (model) {
-            case "FLAT_RATE" -> priceAmount;
-            case "PAY_PER_USE" -> overageRate.multiply(BigDecimal.valueOf(requestCount))
-                    .setScale(2, RoundingMode.HALF_UP);
-            case "TIERED" -> {
-                BigDecimal total = priceAmount;
-                if (requestCount > includedRequests) {
-                    long overage = requestCount - includedRequests;
-                    total = total.add(overageRate.multiply(BigDecimal.valueOf(overage)));
-                }
-                yield total.setScale(2, RoundingMode.HALF_UP);
-            }
-            case "FREEMIUM" -> {
-                if (requestCount <= includedRequests) {
-                    yield BigDecimal.ZERO;
-                }
-                long overage = requestCount - includedRequests;
-                yield overageRate.multiply(BigDecimal.valueOf(overage))
-                        .setScale(2, RoundingMode.HALF_UP);
-            }
-            default -> BigDecimal.ZERO;
-        };
+        return PricingCalculator.calculateCost(plan, requestCount);
     }
 }
