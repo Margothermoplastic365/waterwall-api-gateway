@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -79,5 +80,13 @@ public class SubscriptionController {
             @Valid @RequestBody(required = false) ReviewSubscriptionRequest request) {
         String reason = request != null ? request.getReason() : null;
         return ResponseEntity.ok(subscriptionService.revokeSubscription(id, reason));
+    }
+
+    @PatchMapping("/{id}/plan")
+    public ResponseEntity<SubscriptionResponse> changePlan(
+            @PathVariable UUID id,
+            @RequestBody Map<String, UUID> request) {
+        UUID newPlanId = request.get("planId");
+        return ResponseEntity.ok(subscriptionService.changePlan(id, newPlanId));
     }
 }

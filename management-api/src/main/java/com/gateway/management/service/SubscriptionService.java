@@ -187,6 +187,27 @@ public class SubscriptionService {
         return toResponse(entity);
     }
 
+    @Transactional
+    public SubscriptionResponse changePlan(UUID subscriptionId, UUID newPlanId) {
+        SubscriptionEntity entity = findSubscriptionOrThrow(subscriptionId);
+
+        if (entity.getStatus() != SubStatus.APPROVED && entity.getStatus() != SubStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Can only change plan for APPROVED/ACTIVE subscriptions. Current: " + entity.getStatus());
+        }
+
+        PlanEntity newPlan = planRepository.findById(newPlanId)
+                .orElseThrow(() -> new EntityNotFoundException("Plan not found: " + newPlanId));
+
+        UUID oldPlanId = entity.getPlan().getId();
+        entity.setPlan(newPlan);
+        subscriptionRepository.save(entity);
+
+        log.info("Subscription {} plan changed from {} to {}", subscriptionId, oldPlanId, newPlanId);
+        publishDomainEvent("subscription.plan_changed", subscriptionId.toString());
+        return toResponse(entity);
+    }
+
     private SubscriptionEntity findSubscriptionOrThrow(UUID id) {
         return subscriptionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Subscription not found: " + id));
