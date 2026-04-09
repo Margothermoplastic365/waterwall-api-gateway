@@ -53,6 +53,12 @@ interface CostInfo {
   planName: string;
 }
 
+interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  amount: number;
+}
+
 interface Invoice {
   id: string;
   consumerId: string;
@@ -60,11 +66,12 @@ interface Invoice {
   billingPeriodEnd: string;
   totalAmount: number;
   currency: string;
-  status: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE';
-  lineItems: unknown[];
+  status: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'FAILED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
+  lineItems: string | InvoiceLineItem[];
   createdAt: string;
   paystackReference?: string;
   paidAt?: string;
+  paymentMethodId?: string;
 }
 
 interface PaymentMethod {
@@ -109,8 +116,12 @@ function fmtPeriod(start: string, end: string): string {
 const statusColors: Record<string, { bg: string; fg: string }> = {
   DRAFT: { bg: '#f1f5f9', fg: '#64748b' },
   SENT: { bg: '#dbeafe', fg: '#2563eb' },
+  PENDING: { bg: '#fef3c7', fg: '#d97706' },
   PAID: { bg: '#dcfce7', fg: '#16a34a' },
   OVERDUE: { bg: '#fee2e2', fg: '#dc2626' },
+  FAILED: { bg: '#fee2e2', fg: '#dc2626' },
+  REFUNDED: { bg: '#f0fdf4', fg: '#15803d' },
+  PARTIALLY_REFUNDED: { bg: '#fefce8', fg: '#a16207' },
 };
 
 const paymentTypeIcons: Record<string, string> = {
@@ -291,6 +302,93 @@ export default function BillingPage() {
       alert(e instanceof Error ? e.message : 'Failed to initiate payment');
       setPayingInvoiceId(null);
     }
+  };
+
+  const parseLineItems = (items: string | InvoiceLineItem[]): InvoiceLineItem[] => {
+    if (Array.isArray(items)) return items;
+    if (typeof items === 'string') {
+      try { return JSON.parse(items); } catch { return []; }
+    }
+    return [];
+  };
+
+  const handlePrintInvoice = (inv: Invoice) => {
+    const items = parseLineItems(inv.lineItems);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const doc = printWindow.document;
+    doc.open();
+
+    // Build safe content
+    const escHtml = (s: string) => {
+      const div = doc.createElement('div');
+      div.appendChild(doc.createTextNode(s));
+      return div.innerHTML;
+    };
+
+    const lineItemRows = items.map(item =>
+      `<tr><td>${escHtml(item.description)}</td><td style="text-align:center">${item.quantity.toLocaleString()}</td><td style="text-align:right">${escHtml(fmtCurrency(item.amount, inv.currency))}</td></tr>`
+    ).join('');
+
+    const invoiceHtml = [
+      '<!DOCTYPE html><html><head><title>Invoice</title>',
+      '<style>',
+      '* { margin:0; padding:0; box-sizing:border-box; }',
+      'body { font-family:"Segoe UI",Arial,sans-serif; color:#1e293b; padding:40px; max-width:800px; margin:0 auto; }',
+      '.header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px; padding-bottom:20px; border-bottom:2px solid #e2e8f0; }',
+      '.logo { font-size:22px; font-weight:700; color:#0f172a; }',
+      '.logo span { color:#3b82f6; }',
+      '.inv-title { text-align:right; }',
+      '.inv-title h1 { font-size:28px; font-weight:700; color:#0f172a; margin-bottom:4px; }',
+      '.inv-title .inv-id { font-size:13px; color:#64748b; }',
+      '.meta { display:flex; justify-content:space-between; margin-bottom:32px; }',
+      '.meta-block h3 { font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:6px; }',
+      '.meta-block p { font-size:14px; color:#334155; line-height:1.5; }',
+      '.badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600; }',
+      '.badge-paid { background:#dcfce7; color:#16a34a; }',
+      '.badge-draft { background:#f1f5f9; color:#64748b; }',
+      '.badge-failed { background:#fee2e2; color:#dc2626; }',
+      '.badge-overdue { background:#fef3c7; color:#d97706; }',
+      'table { width:100%; border-collapse:collapse; margin-bottom:24px; }',
+      'th { text-align:left; padding:10px 14px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; border-bottom:2px solid #e2e8f0; }',
+      'td { padding:12px 14px; font-size:14px; color:#334155; border-bottom:1px solid #f1f5f9; }',
+      '.total-row { border-top:2px solid #e2e8f0; }',
+      '.total-row td { font-size:16px; font-weight:700; color:#0f172a; padding-top:16px; }',
+      '.footer { margin-top:40px; padding-top:20px; border-top:1px solid #e2e8f0; font-size:12px; color:#94a3b8; text-align:center; }',
+      '@media print { .no-print { display:none !important; } body { padding:20px; } }',
+      '</style></head><body>',
+      '<div class="header">',
+      '  <div class="logo">API <span>Gateway</span></div>',
+      '  <div class="inv-title"><h1>INVOICE</h1>',
+      '    <div class="inv-id">#', escHtml(inv.id.substring(0, 8).toUpperCase()), '</div>',
+      '  </div>',
+      '</div>',
+      '<div class="meta">',
+      '  <div class="meta-block"><h3>Billing Period</h3><p>', escHtml(fmtDate(inv.billingPeriodStart)), ' — ', escHtml(fmtDate(inv.billingPeriodEnd)), '</p></div>',
+      '  <div class="meta-block"><h3>Issue Date</h3><p>', escHtml(fmtDate(inv.createdAt)), '</p></div>',
+      '  <div class="meta-block"><h3>Status</h3><p><span class="badge badge-', inv.status.toLowerCase(), '">', escHtml(inv.status), '</span></p>',
+      inv.paidAt ? '<p style="margin-top:4px;font-size:12px;color:#64748b">Paid on ' + escHtml(fmtDate(inv.paidAt)) + '</p>' : '',
+      '  </div>',
+      '  <div class="meta-block"><h3>Reference</h3><p>', escHtml(inv.paystackReference || 'N/A'), '</p></div>',
+      '</div>',
+      '<table><thead><tr><th>Description</th><th style="text-align:center">Quantity</th><th style="text-align:right">Amount</th></tr></thead>',
+      '<tbody>', lineItemRows,
+      '<tr class="total-row"><td colspan="2" style="text-align:right">Total</td><td style="text-align:right">', escHtml(fmtCurrency(inv.totalAmount, inv.currency)), '</td></tr>',
+      '</tbody></table>',
+      '<div style="margin-top:24px;padding:16px;background:#f8fafc;border-radius:8px;font-size:13px;color:#475569">',
+      '  <strong>Invoice ID:</strong> ', escHtml(inv.id), '<br/>',
+      '  <strong>Currency:</strong> ', escHtml(inv.currency),
+      '</div>',
+      '<div class="footer"><p>API Gateway Platform — This is a computer-generated invoice, no signature required.</p></div>',
+      '<div class="no-print" style="text-align:center;margin-top:30px">',
+      '  <button onclick="window.print()" style="padding:10px 28px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Print Invoice</button>',
+      '</div>',
+      '</body></html>'
+    ].join('');
+
+    doc.write(invoiceHtml);
+    doc.close();
   };
 
   /* alert actions */
@@ -645,8 +743,8 @@ export default function BillingPage() {
                           )}
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtDate(inv.createdAt)}</td>
-                        <td style={{ ...tdStyle, textAlign: 'center' }}>
-                          {inv.status !== 'PAID' && (
+                        <td style={{ ...tdStyle, textAlign: 'center', display: 'flex', gap: 8, justifyContent: 'center' }}>
+                          {inv.status !== 'PAID' && inv.status !== 'REFUNDED' && (
                             <button
                               onClick={() => handlePayInvoice(inv.id)}
                               disabled={payingInvoiceId !== null}
@@ -665,6 +763,21 @@ export default function BillingPage() {
                               {payingInvoiceId === inv.id ? 'Paying...' : 'Pay Now'}
                             </button>
                           )}
+                          <button
+                            onClick={() => handlePrintInvoice(inv)}
+                            style={{
+                              padding: '6px 14px',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 8,
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: '#475569',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Print
+                          </button>
                         </td>
                       </tr>
                     );
