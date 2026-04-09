@@ -33,6 +33,7 @@ public class ConsumerUsageService {
     private final EntityManager entityManager;
     private final SubscriptionRepository subscriptionRepository;
     private final PlanRepository planRepository;
+    private final PaymentGatewaySettingsService paymentGatewaySettingsService;
 
     // ── Usage Summary ─────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ public class ConsumerUsageService {
 
         String planName = "None";
         String pricingModel = "FREE";
-        String currency = "NGN";
+        String currency = paymentGatewaySettingsService.getDefaultCurrency();
         long includedRequests = 0;
         long overageRequests = 0;
         BigDecimal estimatedCost = BigDecimal.ZERO;
@@ -134,7 +135,7 @@ public class ConsumerUsageService {
         if (plan != null) {
             planName = plan.getName();
             pricingModel = plan.getPricingModel() != null ? plan.getPricingModel() : "FREE";
-            currency = plan.getCurrency() != null ? plan.getCurrency() : "NGN";
+            currency = plan.getCurrency() != null ? plan.getCurrency() : paymentGatewaySettingsService.getDefaultCurrency();
             includedRequests = plan.getIncludedRequests() != null ? plan.getIncludedRequests() : 0L;
             overageRequests = Math.max(0, totalRequests - includedRequests);
             estimatedCost = calculateCost(plan, totalRequests);

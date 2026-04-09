@@ -56,6 +56,9 @@ public class PaymentGatewaySettingsEntity {
     @Column(name = "supported_currencies", length = 500)
     private String supportedCurrencies;
 
+    @Column(name = "default_currency", length = 10)
+    private String defaultCurrency;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extra_config", columnDefinition = "jsonb")
     private String extraConfig;

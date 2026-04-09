@@ -54,6 +54,7 @@ public class PaymentGatewaySettingsService {
         if (update.getCallbackUrl() != null) existing.setCallbackUrl(update.getCallbackUrl());
         if (update.getWebhookUrl() != null) existing.setWebhookUrl(update.getWebhookUrl());
         if (update.getSupportedCurrencies() != null) existing.setSupportedCurrencies(update.getSupportedCurrencies());
+        if (update.getDefaultCurrency() != null) existing.setDefaultCurrency(update.getDefaultCurrency());
         if (update.getExtraConfig() != null) existing.setExtraConfig(update.getExtraConfig());
 
         log.info("Updated payment gateway settings for provider: {}", existing.getProvider());
@@ -65,6 +66,25 @@ public class PaymentGatewaySettingsService {
         PaymentGatewaySettingsEntity entity = getById(id);
         repository.delete(entity);
         log.info("Deleted payment gateway settings for provider: {}", entity.getProvider());
+    }
+
+    /**
+     * Returns the default currency configured by the admin on the active payment gateway.
+     * Falls back to "NGN" if not set.
+     */
+    @Transactional(readOnly = true)
+    public String getDefaultCurrency() {
+        List<PaymentGatewaySettingsEntity> all = repository.findAll();
+        for (PaymentGatewaySettingsEntity s : all) {
+            if (Boolean.TRUE.equals(s.getEnabled()) && s.getDefaultCurrency() != null) {
+                return s.getDefaultCurrency();
+            }
+        }
+        // Fallback: check first provider's default
+        if (!all.isEmpty() && all.get(0).getDefaultCurrency() != null) {
+            return all.get(0).getDefaultCurrency();
+        }
+        return "NGN";
     }
 
     @Transactional

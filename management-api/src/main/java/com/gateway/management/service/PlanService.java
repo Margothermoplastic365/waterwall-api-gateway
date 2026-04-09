@@ -24,6 +24,7 @@ import java.util.UUID;
 public class PlanService {
 
     private final PlanRepository planRepository;
+    private final PaymentGatewaySettingsService paymentGatewaySettingsService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -38,7 +39,7 @@ public class PlanService {
                 // Pricing fields
                 .pricingModel(request.getPricingModel() != null ? request.getPricingModel() : "FREE")
                 .priceAmount(request.getPriceAmount())
-                .currency(request.getCurrency() != null ? request.getCurrency() : "NGN")
+                .currency(request.getCurrency() != null ? request.getCurrency() : paymentGatewaySettingsService.getDefaultCurrency())
                 .billingPeriod(request.getBillingPeriod())
                 .includedRequests(request.getIncludedRequests())
                 .overageRate(request.getOverageRate())

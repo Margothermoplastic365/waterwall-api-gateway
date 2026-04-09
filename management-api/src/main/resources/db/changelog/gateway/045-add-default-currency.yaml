@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-045-add-default-currency
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: payment_gateway_settings
+            columns:
+              - column:
+                  name: default_currency
+                  type: varchar(10)
+                  defaultValue: "NGN"
+  - changeSet:
+      id: gw-045-seed-default-currency
+      author: gateway-team
+      changes:
+        - update:
+            schemaName: gateway
+            tableName: payment_gateway_settings
+            columns:
+              - column:
+                  name: default_currency
+                  value: "NGN"
+            where: provider = 'paystack'

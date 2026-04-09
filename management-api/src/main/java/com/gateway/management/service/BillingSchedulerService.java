@@ -36,6 +36,7 @@ public class BillingSchedulerService {
     private final PaymentProviderFactory paymentProviderFactory;
     private final PaymentMethodRepository paymentMethodRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentGatewaySettingsService paymentGatewaySettingsService;
     private final EventPublisher eventPublisher;
 
     @Scheduled(cron = "0 0 2 * * *")
@@ -137,7 +138,7 @@ public class BillingSchedulerService {
                     defaultMethod.getPaystackAuthorizationCode(),
                     defaultMethod.getPaystackCustomerCode(),
                     invoice.getTotalAmount(),
-                    invoice.getCurrency() != null ? invoice.getCurrency() : "NGN",
+                    invoice.getCurrency() != null ? invoice.getCurrency() : paymentGatewaySettingsService.getDefaultCurrency(),
                     reference);
 
             if (result.isSuccessful()) {

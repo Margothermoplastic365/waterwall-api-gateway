@@ -37,6 +37,7 @@ public class DunningSchedulerService {
     private final PaymentProviderFactory paymentProviderFactory;
     private final SubscriptionRepository subscriptionRepository;
     private final EventPublisher eventPublisher;
+    private final PaymentGatewaySettingsService paymentGatewaySettingsService;
     private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
 
@@ -160,7 +161,7 @@ public class DunningSchedulerService {
                     defaultMethod.getPaystackAuthorizationCode(),
                     defaultMethod.getPaystackCustomerCode(),
                     invoice.getTotalAmount(),
-                    invoice.getCurrency() != null ? invoice.getCurrency() : "NGN",
+                    invoice.getCurrency() != null ? invoice.getCurrency() : paymentGatewaySettingsService.getDefaultCurrency(),
                     reference);
 
             if (result.isSuccessful()) {

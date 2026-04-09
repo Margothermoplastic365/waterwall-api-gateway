@@ -35,6 +35,7 @@ public class MonetizationService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final CreditNoteRepository creditNoteRepository;
     private final PaymentProviderFactory paymentProviderFactory;
+    private final PaymentGatewaySettingsService paymentGatewaySettingsService;
     private final EntityManager entityManager;
 
     // ── Invoice Generation ────────────────────────────────────────────────
@@ -63,7 +64,7 @@ public class MonetizationService {
 
         // Calculate cost based on the pricing model
         BigDecimal totalAmount = calculateCost(plan, requestCount);
-        String currency = plan != null && plan.getCurrency() != null ? plan.getCurrency() : "NGN";
+        String currency = plan != null && plan.getCurrency() != null ? plan.getCurrency() : paymentGatewaySettingsService.getDefaultCurrency();
 
         // Build line items JSON
         String lineItemsJson = buildLineItemsJson(plan, requestCount, totalAmount);
@@ -96,7 +97,7 @@ public class MonetizationService {
         // Group revenue by currency
         Map<String, BigDecimal> totalByCurrency = periodInvoices.stream()
                 .collect(Collectors.groupingBy(
-                        inv -> inv.getCurrency() != null ? inv.getCurrency() : "NGN",
+                        inv -> inv.getCurrency() != null ? inv.getCurrency() : paymentGatewaySettingsService.getDefaultCurrency(),
                         LinkedHashMap::new,
                         Collectors.reducing(BigDecimal.ZERO, InvoiceEntity::getTotalAmount, BigDecimal::add)
                 ));
