@@ -38,13 +38,18 @@ public class WalletService {
     public WalletEntity getOrCreateWallet(UUID consumerId) {
         return walletRepository.findByConsumerId(consumerId)
                 .orElseGet(() -> {
-                    WalletEntity wallet = WalletEntity.builder()
-                            .consumerId(consumerId)
-                            .balance(BigDecimal.ZERO)
-                            .currency(paymentGatewaySettingsService.getDefaultCurrency())
-                            .build();
-                    log.info("Created wallet for consumer={}", consumerId);
-                    return walletRepository.save(wallet);
+                    try {
+                        WalletEntity wallet = WalletEntity.builder()
+                                .consumerId(consumerId)
+                                .balance(BigDecimal.ZERO)
+                                .currency(paymentGatewaySettingsService.getDefaultCurrency())
+                                .build();
+                        log.info("Created wallet for consumer={}", consumerId);
+                        return walletRepository.save(wallet);
+                    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        // Race condition — another thread created it first
+                        return walletRepository.findByConsumerId(consumerId).orElseThrow();
+                    }
                 });
     }
 

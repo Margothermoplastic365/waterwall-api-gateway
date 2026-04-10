@@ -48,7 +48,7 @@ public class PaystackService {
         requestBody.put("reference", reference);
         requestBody.put("currency", currency);
         requestBody.put("callback_url", settings.getCallbackUrl());
-        requestBody.put("metadata", Map.of("invoiceId", invoiceId.toString()));
+        requestBody.put("metadata", Map.of("invoiceId", invoiceId != null ? invoiceId.toString() : "", "reference", reference));
 
         try {
             String responseBody = paystackRestClient.post()
