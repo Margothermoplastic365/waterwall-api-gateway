@@ -54,6 +54,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/v1/webhooks/paystack").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/v1/webhooks/stripe").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/v1/webhooks/flutterwave").permitAll()
                         // Public read-only endpoints for the developer portal catalog
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/v1/apis", "/v1/apis/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/v1/plans", "/v1/plans/**").permitAll()
