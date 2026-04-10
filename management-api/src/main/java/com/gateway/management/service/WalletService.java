@@ -185,7 +185,9 @@ public class WalletService {
                 log.info("Top-up already processed for reference={}, returning current wallet", reference);
                 return wallet;
             }
-            throw new IllegalStateException("No pending top-up found for reference: " + reference);
+            // No pending and not previously processed — likely a stale callback or duplicate page load
+            log.warn("No pending top-up for reference={}, returning current wallet without error", reference);
+            return wallet;
         }
 
         // Verify reference matches
