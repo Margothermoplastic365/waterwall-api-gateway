@@ -239,15 +239,25 @@ export default function BillingPage() {
     const reference = params.get('reference') || params.get('trxref');
     const providerParam = params.get('provider') || '';
     if (verify === 'true' && reference) {
-      const verifyUrl = providerParam
-          ? `${API_BASE}/v1/consumer/payments/verify?reference=${reference}&provider=${providerParam}`
-          : `${API_BASE}/v1/consumer/payments/verify?reference=${reference}`;
+      const isTopUp = reference.startsWith('TOPUP-');
+      const baseVerifyUrl = isTopUp
+          ? `${API_BASE}/v1/consumer/wallet/top-up/verify`
+          : `${API_BASE}/v1/consumer/payments/verify`;
+      const verifyParams = new URLSearchParams({ reference });
+      if (providerParam) verifyParams.set('provider', providerParam);
+      const verifyUrl = `${baseVerifyUrl}?${verifyParams.toString()}`;
+
       fetch(verifyUrl, { headers: authHeaders() })
         .then(res => {
           if (res.ok) {
-            setVerifyMsg({ type: 'success', text: 'Payment successful! Your invoice has been marked as paid.' });
+            setVerifyMsg({ type: 'success', text: isTopUp ? 'Wallet topped up successfully!' : 'Payment successful! Your invoice has been marked as paid.' });
+            loadAll();
           } else {
-            setVerifyMsg({ type: 'error', text: 'Payment verification failed. Please contact support.' });
+            return res.json().then(err => {
+              setVerifyMsg({ type: 'error', text: err.message || 'Payment verification failed. Please contact support.' });
+            }).catch(() => {
+              setVerifyMsg({ type: 'error', text: 'Payment verification failed. Please contact support.' });
+            });
           }
         })
         .catch(() => setVerifyMsg({ type: 'error', text: 'Could not verify payment.' }));
