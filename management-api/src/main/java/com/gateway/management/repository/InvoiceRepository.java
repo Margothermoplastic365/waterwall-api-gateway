@@ -17,6 +17,8 @@ public interface InvoiceRepository extends JpaRepository<InvoiceEntity, UUID> {
 
     Optional<InvoiceEntity> findByPaystackReference(String paystackReference);
 
+    Optional<InvoiceEntity> findByPaymentReference(String paymentReference);
+
     Optional<InvoiceEntity> findByConsumerIdAndBillingPeriodStartAndBillingPeriodEnd(
             UUID consumerId, java.time.LocalDate billingPeriodStart, java.time.LocalDate billingPeriodEnd);
 

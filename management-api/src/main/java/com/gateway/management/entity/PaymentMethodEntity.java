@@ -38,9 +38,17 @@ public class PaymentMethodEntity {
     @Column(name = "is_default")
     private Boolean isDefault;
 
+    @Column(name = "authorization_token", length = 500)
+    private String authorizationToken;
+
+    @Column(name = "customer_token", length = 255)
+    private String customerToken;
+
+    @Deprecated
     @Column(name = "paystack_authorization_code", length = 500)
     private String paystackAuthorizationCode;
 
+    @Deprecated
     @Column(name = "paystack_customer_code", length = 255)
     private String paystackCustomerCode;
 

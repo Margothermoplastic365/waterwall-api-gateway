@@ -49,6 +49,13 @@ public class InvoiceEntity {
     @Column(name = "line_items", columnDefinition = "jsonb")
     private String lineItems;
 
+    @Column(name = "payment_reference", length = 255)
+    private String paymentReference;
+
+    @Column(name = "payment_provider", length = 50)
+    private String paymentProvider;
+
+    @Deprecated
     @Column(name = "paystack_reference", length = 255)
     private String paystackReference;
 

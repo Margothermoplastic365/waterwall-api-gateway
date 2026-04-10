@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface PaymentGatewaySettingsRepository extends JpaRepository<PaymentGatewaySettingsEntity, UUID> {
 
     Optional<PaymentGatewaySettingsEntity> findByProvider(String provider);
+
+    java.util.List<PaymentGatewaySettingsEntity> findByEnabledTrue();
 }
