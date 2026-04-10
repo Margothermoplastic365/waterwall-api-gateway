@@ -6,7 +6,6 @@ import com.gateway.management.entity.enums.SubStatus;
 import com.gateway.management.repository.SubscriptionRepository;
 import com.gateway.management.repository.WalletRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -66,52 +65,44 @@ public class WalletDeductionScheduler {
 
         List<SubscriptionEntity> subscriptions = subscriptionRepository.findByStatus(SubStatus.APPROVED);
 
-        // Group subscriptions by app ID
-        Map<UUID, List<SubscriptionEntity>> byAppId = new HashMap<>();
+        // Collect unique app IDs and build owner mapping
+        Set<UUID> appIds = new HashSet<>();
         for (SubscriptionEntity sub : subscriptions) {
-            byAppId.computeIfAbsent(sub.getApplicationId(), k -> new ArrayList<>()).add(sub);
+            appIds.add(sub.getApplicationId());
         }
+        Map<UUID, UUID> appToUser = resolveAppOwners(appIds);
 
-        // Build app ID -> user ID mapping
-        Map<UUID, UUID> appToUser = resolveAppOwners(byAppId.keySet());
-
+        // Process each subscription individually (per app + per API)
         int deducted = 0;
-        for (Map.Entry<UUID, List<SubscriptionEntity>> entry : byAppId.entrySet()) {
-            UUID appId = entry.getKey();
-            List<SubscriptionEntity> consumerSubs = entry.getValue();
+        // Track which wallet owners we've already charged per this cycle to aggregate totals
+        Map<UUID, BigDecimal> totalCostPerOwner = new HashMap<>();
+        Map<UUID, StringBuilder> descPerOwner = new HashMap<>();
 
-            // Resolve the wallet owner (user who owns this app)
+        for (SubscriptionEntity sub : subscriptions) {
+            UUID appId = sub.getApplicationId();
+            UUID apiId = sub.getApi().getId();
+            PlanEntity plan = sub.getPlan();
             UUID walletOwnerId = appToUser.getOrDefault(appId, appId);
 
+            if (plan == null) continue;
+
+            String model = plan.getPricingModel() != null ? plan.getPricingModel().toUpperCase() : "FREE";
+            if ("FREE".equals(model) || "FLAT_RATE".equals(model)) continue;
+
             try {
-                // Count requests for this app ID (that's what gets logged)
-                long requestCount = countRequests(appId, since, now);
+                // Count requests for this specific app + API in this window
+                long requestCount = countRequestsForApi(appId, apiId, since, now);
                 if (requestCount == 0) continue;
 
-                // Resolve the plan for cost calculation
-                PlanEntity plan = resolvePlan(consumerSubs);
-                if (plan == null) continue;
-
-                String model = plan.getPricingModel() != null ? plan.getPricingModel().toUpperCase() : "FREE";
-
-                // FREE plans never charge
-                if ("FREE".equals(model)) continue;
-
-                // FLAT_RATE in PAY_AS_YOU_GO doesn't make sense — skip
-                // (flat rate is a subscription concept, not per-request)
-                if ("FLAT_RATE".equals(model)) continue;
-
-                // For PAY_PER_USE, TIERED, FREEMIUM — calculate cost using PricingCalculator
-                // But we need incremental cost (just this window's requests), not total month
-                long monthlyUsage = countMonthlyRequests(appId);
+                // Count monthly total for this app + API (for free tier calculation)
+                long monthlyUsage = countMonthlyRequestsForApi(appId, apiId);
                 long usageBefore = monthlyUsage - requestCount;
 
-                // Calculate cost for total monthly usage vs cost before this window
-                // The difference is what this window costs
+                // Calculate incremental cost using PricingCalculator
                 BigDecimal costTotal = PricingCalculator.calculateCost(plan, monthlyUsage);
                 BigDecimal costBefore = PricingCalculator.calculateCost(plan, usageBefore);
 
-                // For TIERED model, subtract the base fee from both since it's a subscription charge
+                // For TIERED, subtract base fee (subscription concept)
                 if ("TIERED".equals(model)) {
                     BigDecimal baseFee = plan.getPriceAmount() != null ? plan.getPriceAmount() : BigDecimal.ZERO;
                     costTotal = costTotal.subtract(baseFee);
@@ -123,22 +114,33 @@ public class WalletDeductionScheduler {
 
                 if (cost.signum() <= 0) continue;
 
-                BigDecimal perRequestRate = plan.getOverageRate() != null ? plan.getOverageRate() : BigDecimal.ZERO;
-                long billableRequests = perRequestRate.signum() > 0
-                        ? cost.divide(perRequestRate, 0, RoundingMode.HALF_UP).longValue()
-                        : requestCount;
+                BigDecimal rate = plan.getOverageRate() != null ? plan.getOverageRate() : BigDecimal.ZERO;
+                String apiName = sub.getApi().getName() != null ? sub.getApi().getName() : apiId.toString().substring(0, 8);
 
-                // Deduct from the user's wallet, not the app's
-                walletService.deduct(walletOwnerId, cost,
-                        "USAGE-" + now.toEpochMilli(),
-                        billableRequests + " API requests @ " + perRequestRate + "/req (" + model + ")",
-                        null);
-                deducted++;
+                totalCostPerOwner.merge(walletOwnerId, cost, BigDecimal::add);
+                descPerOwner.computeIfAbsent(walletOwnerId, k -> new StringBuilder())
+                        .append(requestCount).append(" calls to ").append(apiName)
+                        .append(" @ ").append(rate).append("/req (").append(model).append("); ");
 
-            } catch (IllegalStateException e) {
-                log.warn("Wallet deduction failed for app={} owner={}: {}", appId, walletOwnerId, e.getMessage());
             } catch (Exception e) {
-                log.error("Wallet deduction error for app={} owner={}: {}", appId, walletOwnerId, e.getMessage());
+                log.error("Wallet deduction calc error for app={} api={}: {}", appId, apiId, e.getMessage());
+            }
+        }
+
+        // Now deduct aggregated costs per wallet owner
+        for (Map.Entry<UUID, BigDecimal> entry : totalCostPerOwner.entrySet()) {
+            UUID ownerId = entry.getKey();
+            BigDecimal totalCost = entry.getValue().setScale(2, RoundingMode.HALF_UP);
+            String desc = descPerOwner.get(ownerId).toString();
+
+            try {
+                walletService.deduct(ownerId, totalCost,
+                        "USAGE-" + now.toEpochMilli(), desc.trim(), null);
+                deducted++;
+            } catch (IllegalStateException e) {
+                log.warn("Wallet deduction failed for owner={}: {}", ownerId, e.getMessage());
+            } catch (Exception e) {
+                log.error("Wallet deduction error for owner={}: {}", ownerId, e.getMessage());
             }
         }
 
@@ -147,62 +149,41 @@ public class WalletDeductionScheduler {
         }
     }
 
-    private long countRequests(UUID consumerId, Instant since, Instant until) {
+    private long countRequestsForApi(UUID appId, UUID apiId, Instant since, Instant until) {
         try {
-            Query query = entityManager.createNativeQuery(
+            return ((Number) entityManager.createNativeQuery(
                     "SELECT COUNT(*) FROM analytics.request_logs " +
-                    "WHERE consumer_id = :consumerId " +
+                    "WHERE consumer_id = :appId AND api_id = :apiId " +
                     "AND (mock_mode IS NULL OR mock_mode = false) " +
                     "AND created_at >= :since AND created_at < :until"
-            );
-            query.setParameter("consumerId", consumerId);
-            query.setParameter("since", java.sql.Timestamp.from(since));
-            query.setParameter("until", java.sql.Timestamp.from(until));
-            return ((Number) query.getSingleResult()).longValue();
+            ).setParameter("appId", appId)
+             .setParameter("apiId", apiId)
+             .setParameter("since", java.sql.Timestamp.from(since))
+             .setParameter("until", java.sql.Timestamp.from(until))
+             .getSingleResult()).longValue();
         } catch (Exception e) {
-            log.warn("Failed to count requests for consumer={}: {}", consumerId, e.getMessage());
+            log.warn("Failed to count requests for app={} api={}: {}", appId, apiId, e.getMessage());
             return 0;
         }
     }
 
-    private long countMonthlyRequests(UUID consumerId) {
+    private long countMonthlyRequestsForApi(UUID appId, UUID apiId) {
         try {
             java.time.LocalDate monthStart = java.time.LocalDate.now().withDayOfMonth(1);
-            Query query = entityManager.createNativeQuery(
+            return ((Number) entityManager.createNativeQuery(
                     "SELECT COUNT(*) FROM analytics.request_logs " +
-                    "WHERE consumer_id = :consumerId " +
+                    "WHERE consumer_id = :appId AND api_id = :apiId " +
                     "AND (mock_mode IS NULL OR mock_mode = false) " +
                     "AND created_at >= CAST(:monthStart AS timestamp)"
-            );
-            query.setParameter("consumerId", consumerId);
-            query.setParameter("monthStart", monthStart.toString());
-            return ((Number) query.getSingleResult()).longValue();
+            ).setParameter("appId", appId)
+             .setParameter("apiId", apiId)
+             .setParameter("monthStart", monthStart.toString())
+             .getSingleResult()).longValue();
         } catch (Exception e) {
             return 0;
         }
     }
 
-    private PlanEntity resolvePlan(List<SubscriptionEntity> subs) {
-        // Prefer a plan with an overage rate set (i.e. a paid plan)
-        for (SubscriptionEntity sub : subs) {
-            PlanEntity plan = sub.getPlan();
-            if (plan != null && plan.getOverageRate() != null && plan.getOverageRate().signum() > 0) {
-                return plan;
-            }
-        }
-        // Fall back to any non-free plan
-        for (SubscriptionEntity sub : subs) {
-            PlanEntity plan = sub.getPlan();
-            if (plan != null && !"FREE".equalsIgnoreCase(plan.getPricingModel())) {
-                return plan;
-            }
-        }
-        // Last resort: any plan
-        for (SubscriptionEntity sub : subs) {
-            if (sub.getPlan() != null) return sub.getPlan();
-        }
-        return null;
-    }
 
     /**
      * Maps application IDs to the user IDs that own them.
