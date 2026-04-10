@@ -37,6 +37,7 @@ public class BillingSchedulerService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentGatewaySettingsService paymentGatewaySettingsService;
+    private final WalletService walletService;
     private final EventPublisher eventPublisher;
 
     @Scheduled(cron = "0 0 2 * * *")
@@ -116,6 +117,13 @@ public class BillingSchedulerService {
             invoice.setStatus("PAID");
             invoice.setPaidAt(Instant.now());
             invoiceRepository.save(invoice);
+            return true;
+        }
+
+        // Try wallet first
+        if (walletService.payInvoiceFromWallet(consumerId, invoice)) {
+            publishBillingEvent("invoice.paid", consumerId, invoice.getId());
+            log.info("Invoice {} paid from wallet for consumer={}", invoice.getId(), consumerId);
             return true;
         }
 

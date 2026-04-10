@@ -80,4 +80,9 @@ public class RabbitConfig {
     public Binding billingAlertBinding(Queue billingEventsQueue, TopicExchange platformEventsExchange) {
         return BindingBuilder.bind(billingEventsQueue).to(platformEventsExchange).with("consumer.alert_triggered");
     }
+
+    @Bean
+    public Binding walletLowBalanceBinding(Queue billingEventsQueue, TopicExchange platformEventsExchange) {
+        return BindingBuilder.bind(billingEventsQueue).to(platformEventsExchange).with("wallet.*");
+    }
 }

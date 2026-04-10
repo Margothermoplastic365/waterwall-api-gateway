@@ -18,15 +18,17 @@ public class BillingEventsConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(BillingEventsConsumer.class);
 
-    private static final Map<String, String> EVENT_TITLE_MAP = Map.of(
-            "invoice.generated", "New Invoice",
-            "invoice.paid", "Payment Confirmed",
-            "payment.failed", "Payment Failed",
-            "payment.retry_scheduled", "Payment Retry Scheduled",
-            "subscription.grace_period", "Subscription Grace Period",
-            "subscription.suspended", "Subscription Suspended",
-            "subscription.expired", "Subscription Expired",
-            "consumer.alert_triggered", "Alert Triggered"
+    private static final Map<String, String> EVENT_TITLE_MAP = Map.ofEntries(
+            Map.entry("invoice.generated", "New Invoice"),
+            Map.entry("invoice.paid", "Payment Confirmed"),
+            Map.entry("payment.failed", "Payment Failed"),
+            Map.entry("payment.retry_scheduled", "Payment Retry Scheduled"),
+            Map.entry("subscription.grace_period", "Subscription Grace Period"),
+            Map.entry("subscription.suspended", "Subscription Suspended"),
+            Map.entry("subscription.expired", "Subscription Expired"),
+            Map.entry("consumer.alert_triggered", "Alert Triggered"),
+            Map.entry("wallet.low_balance", "Low Wallet Balance"),
+            Map.entry("wallet.auto_topped_up", "Wallet Auto Top-Up")
     );
 
     private final NotificationRepository notificationRepository;
@@ -98,6 +100,8 @@ public class BillingEventsConsumer {
             case "subscription.suspended" -> "Your subscription has been suspended due to non-payment.";
             case "subscription.expired" -> "Your subscription has expired.";
             case "consumer.alert_triggered" -> "One of your usage alert thresholds has been reached.";
+            case "wallet.low_balance" -> "Your wallet balance is running low. Please top up to avoid service interruption.";
+            case "wallet.auto_topped_up" -> "Your wallet has been automatically topped up.";
             default -> "Billing event: " + eventType;
         };
     }
