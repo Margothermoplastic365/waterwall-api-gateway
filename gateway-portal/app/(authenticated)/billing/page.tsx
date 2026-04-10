@@ -1026,6 +1026,87 @@ export default function BillingPage() {
               </button>
             </div>
 
+            {/* Wallet Settings */}
+            <div style={{ backgroundColor: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', padding: 20, marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#334155', marginBottom: 12 }}>Wallet Settings</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, alignItems: 'end' }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Auto Top-Up</label>
+                  <select
+                    value={wallet.autoTopUpEnabled ? 'true' : 'false'}
+                    onChange={(e) => {
+                      const enabled = e.target.value === 'true';
+                      fetch(`${API_BASE}/v1/consumer/wallet/settings`, {
+                        method: 'PUT', headers: authHeaders(),
+                        body: JSON.stringify({ autoTopUpEnabled: enabled }),
+                      }).then(res => res.ok && res.json()).then(w => w && setWallet(w));
+                    }}
+                    style={inputStyle}
+                  >
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Top-Up When Below</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 1000"
+                    defaultValue={wallet.autoTopUpThreshold || ''}
+                    onBlur={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) {
+                        fetch(`${API_BASE}/v1/consumer/wallet/settings`, {
+                          method: 'PUT', headers: authHeaders(),
+                          body: JSON.stringify({ autoTopUpThreshold: val }),
+                        }).then(res => res.ok && res.json()).then(w => w && setWallet(w));
+                      }
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Top-Up Amount</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5000"
+                    defaultValue={wallet.autoTopUpAmount || ''}
+                    onBlur={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) {
+                        fetch(`${API_BASE}/v1/consumer/wallet/settings`, {
+                          method: 'PUT', headers: authHeaders(),
+                          body: JSON.stringify({ autoTopUpAmount: val }),
+                        }).then(res => res.ok && res.json()).then(w => w && setWallet(w));
+                      }
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 4 }}>Low Balance Alert</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 500"
+                    defaultValue={wallet.lowBalanceThreshold || ''}
+                    onBlur={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) {
+                        fetch(`${API_BASE}/v1/consumer/wallet/settings`, {
+                          method: 'PUT', headers: authHeaders(),
+                          body: JSON.stringify({ lowBalanceThreshold: val }),
+                        }).then(res => res.ok && res.json()).then(w => w && setWallet(w));
+                      }
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+                Settings save automatically when you change them. Auto top-up charges your default payment method.
+              </p>
+            </div>
+
             {walletTxns.content && walletTxns.content.length > 0 && (
               <div>
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: '#334155', marginBottom: 10 }}>Recent Transactions</h3>
