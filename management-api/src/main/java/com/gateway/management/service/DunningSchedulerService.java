@@ -38,6 +38,7 @@ public class DunningSchedulerService {
     private final SubscriptionRepository subscriptionRepository;
     private final EventPublisher eventPublisher;
     private final PaymentGatewaySettingsService paymentGatewaySettingsService;
+    private final PlatformSettingsService platformSettingsService;
     private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
 
@@ -46,6 +47,10 @@ public class DunningSchedulerService {
     @Scheduled(cron = "0 30 2 * * *")
     @Transactional
     public void runDunningCycle() {
+        if (!platformSettingsService.isSubscriptionMode()) {
+            log.debug("Dunning cycle skipped — platform is in PAY_AS_YOU_GO mode");
+            return;
+        }
         log.info("Starting dunning cycle");
         processActiveRetries();
         processGracePeriodExpiry();

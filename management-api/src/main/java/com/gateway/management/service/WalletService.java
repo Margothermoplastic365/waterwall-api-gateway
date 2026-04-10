@@ -135,33 +135,23 @@ public class WalletService {
     }
 
     /**
-     * Attempts to pay an invoice from wallet balance.
-     * Returns true if successful, false if insufficient balance.
+     * Checks if consumer has sufficient wallet balance for the given amount.
      */
-    @Transactional
-    public boolean payInvoiceFromWallet(UUID consumerId, InvoiceEntity invoice) {
-        WalletEntity wallet = walletRepository.findByConsumerId(consumerId).orElse(null);
-        if (wallet == null || wallet.getBalance().compareTo(invoice.getTotalAmount()) < 0) {
-            return false;
-        }
+    @Transactional(readOnly = true)
+    public boolean hasSufficientBalance(UUID consumerId, BigDecimal amount) {
+        return walletRepository.findByConsumerId(consumerId)
+                .map(w -> w.getBalance().compareTo(amount) >= 0)
+                .orElse(false);
+    }
 
-        try {
-            deduct(consumerId, invoice.getTotalAmount(),
-                    "WALLET-PAY-" + invoice.getId().toString().substring(0, 8),
-                    "Invoice payment from wallet", invoice.getId());
-
-            invoice.setStatus("PAID");
-            invoice.setPaidAt(Instant.now());
-            invoice.setPaymentProvider("wallet");
-            invoice.setPaymentReference("WALLET-" + invoice.getId().toString().substring(0, 8));
-            invoiceRepository.save(invoice);
-
-            log.info("Invoice {} paid from wallet for consumer={}", invoice.getId(), consumerId);
-            return true;
-        } catch (Exception e) {
-            log.warn("Wallet payment failed for invoice {}: {}", invoice.getId(), e.getMessage());
-            return false;
-        }
+    /**
+     * Gets wallet balance for a consumer, returns ZERO if no wallet exists.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal getBalance(UUID consumerId) {
+        return walletRepository.findByConsumerId(consumerId)
+                .map(WalletEntity::getBalance)
+                .orElse(BigDecimal.ZERO);
     }
 
     private void publishLowBalanceAlert(UUID consumerId, BigDecimal balance, BigDecimal threshold) {

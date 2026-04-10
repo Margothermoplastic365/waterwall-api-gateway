@@ -37,12 +37,16 @@ public class BillingSchedulerService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentGatewaySettingsService paymentGatewaySettingsService;
-    private final WalletService walletService;
+    private final PlatformSettingsService platformSettingsService;
     private final EventPublisher eventPublisher;
 
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
     public void runBillingCycle() {
+        if (!platformSettingsService.isSubscriptionMode()) {
+            log.debug("Billing cycle skipped — platform is in PAY_AS_YOU_GO mode");
+            return;
+        }
         log.info("Starting billing cycle");
         List<SubscriptionEntity> activeSubscriptions =
                 subscriptionRepository.findByStatus(SubStatus.APPROVED);
@@ -120,12 +124,6 @@ public class BillingSchedulerService {
             return true;
         }
 
-        // Try wallet first
-        if (walletService.payInvoiceFromWallet(consumerId, invoice)) {
-            publishBillingEvent("invoice.paid", consumerId, invoice.getId());
-            log.info("Invoice {} paid from wallet for consumer={}", invoice.getId(), consumerId);
-            return true;
-        }
 
         List<PaymentMethodEntity> methods = paymentMethodRepository.findByConsumerId(consumerId);
         PaymentMethodEntity defaultMethod = methods.stream()
