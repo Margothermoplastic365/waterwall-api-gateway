@@ -18,6 +18,7 @@ interface PaymentGatewaySettings {
   callbackUrl?: string;
   webhookUrl?: string;
   supportedCurrencies?: string;
+  defaultCurrency?: string;
   extraConfig?: string;
   createdAt: string;
   updatedAt: string;
@@ -32,8 +33,17 @@ const EMPTY_FORM = {
   publicKey: '',
   baseUrl: 'https://api.paystack.co',
   callbackUrl: 'http://localhost:3000/billing?verify=true',
+  webhookUrl: '',
   supportedCurrencies: 'NGN,USD,GHS,ZAR,KES',
+  defaultCurrency: 'NGN',
+  extraConfig: '',
   enabled: true,
+};
+
+const PROVIDER_PRESETS: Record<string, Partial<typeof EMPTY_FORM>> = {
+  paystack: { displayName: 'Paystack', baseUrl: 'https://api.paystack.co', supportedCurrencies: 'NGN,USD,GHS,ZAR,KES' },
+  stripe: { displayName: 'Stripe', baseUrl: 'https://api.stripe.com', supportedCurrencies: 'USD,EUR,GBP,NGN' },
+  flutterwave: { displayName: 'Flutterwave', baseUrl: 'https://api.flutterwave.com/v3', supportedCurrencies: 'NGN,USD,GHS,ZAR,KES' },
 };
 
 function getToken(): string {
@@ -114,7 +124,10 @@ export default function PaymentSettingsPage() {
       publicKey: gw.publicKey || '',
       baseUrl: gw.baseUrl || '',
       callbackUrl: gw.callbackUrl || '',
+      webhookUrl: gw.webhookUrl || '',
       supportedCurrencies: gw.supportedCurrencies || '',
+      defaultCurrency: (gw as Record<string, unknown>).defaultCurrency as string || 'NGN',
+      extraConfig: gw.extraConfig || '',
       enabled: gw.enabled,
     });
     setShowSecret(false);
@@ -335,9 +348,9 @@ export default function PaymentSettingsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Paystack Settings</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Payment Gateway Settings</h1>
             <p className="mt-1 text-sm text-slate-500">
-              Configure your Paystack credentials, environment, and callback URLs
+              Configure payment providers (Paystack, Stripe, Flutterwave), credentials, and callback URLs
             </p>
           </div>
           <button
@@ -379,8 +392,20 @@ export default function PaymentSettingsPage() {
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className={labelCls}>Provider <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.provider} disabled={!!editingId}
-                  onChange={(e) => setForm((f) => ({ ...f, provider: e.target.value }))} placeholder="paystack" />
+                {editingId ? (
+                  <input className={inputCls + ' bg-slate-50'} value={form.provider} disabled />
+                ) : (
+                  <select className={inputCls} value={form.provider}
+                    onChange={(e) => {
+                      const p = e.target.value;
+                      const preset = PROVIDER_PRESETS[p] || {};
+                      setForm((f) => ({ ...f, provider: p, ...preset }));
+                    }}>
+                    <option value="paystack">Paystack</option>
+                    <option value="stripe">Stripe</option>
+                    <option value="flutterwave">Flutterwave</option>
+                  </select>
+                )}
               </div>
               <div className="space-y-1">
                 <label className={labelCls}>Display Name <span className="text-red-500">*</span></label>
@@ -458,7 +483,33 @@ export default function PaymentSettingsPage() {
               </div>
             </div>
 
-            {/* Row 5: Enabled toggle */}
+            {/* Row 5: Default Currency + Extra Config */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className={labelCls}>Default Currency</label>
+                <select className={inputCls} value={form.defaultCurrency}
+                  onChange={(e) => setForm((f) => ({ ...f, defaultCurrency: e.target.value }))}>
+                  {(form.supportedCurrencies || 'NGN').split(',').map(c => c.trim()).filter(Boolean).map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400">Used as default for invoices and billing</p>
+              </div>
+              <div className="space-y-1">
+                <label className={labelCls}>Extra Config (JSON)</label>
+                <textarea className={inputCls + ' font-mono text-xs'} rows={3}
+                  value={form.extraConfig}
+                  placeholder={form.provider === 'stripe' ? '{"webhookSecret":"whsec_xxx"}' : form.provider === 'flutterwave' ? '{"encryptionKey":"FLWSECK_xxx"}' : '{}'}
+                  onChange={(e) => setForm((f) => ({ ...f, extraConfig: e.target.value }))} />
+                <p className="text-[11px] text-slate-400">
+                  {form.provider === 'stripe' && 'Add webhookSecret for Stripe signature verification'}
+                  {form.provider === 'flutterwave' && 'Add encryptionKey for Flutterwave encryption'}
+                  {form.provider === 'paystack' && 'Optional provider-specific configuration'}
+                </p>
+              </div>
+            </div>
+
+            {/* Row 6: Enabled toggle */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
               <div>
                 <label className={labelCls}>Enabled</label>
