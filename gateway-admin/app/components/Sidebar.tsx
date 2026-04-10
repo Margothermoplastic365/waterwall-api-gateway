@@ -125,7 +125,7 @@ const navigation: NavGroup[] = [
     icon: <MoneyIcon />,
     items: [
       { label: 'Monetization', href: '/monetization', icon: <Dot /> },
-      { label: 'Paystack', href: '/payment-settings', icon: <Dot /> },
+      { label: 'Payment Gateways', href: '/payment-settings', icon: <Dot /> },
     ],
   },
 ];
