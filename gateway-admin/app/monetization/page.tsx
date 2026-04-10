@@ -617,6 +617,33 @@ export default function MonetizationPage() {
               <span><strong>Pay As You Go mode:</strong> Developers top up a prepaid wallet. Usage is deducted automatically based on per-request rates. API access blocked when wallet is empty.</span>
             )}
           </div>
+          {billingMode === 'PAY_AS_YOU_GO' && (
+            <div className="mt-3 flex items-center gap-3">
+              <label className="text-xs font-medium text-slate-600">Usage deduction interval:</label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                defaultValue={5}
+                className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-center"
+                onBlur={async (e) => {
+                  const val = parseInt(e.target.value);
+                  if (isNaN(val) || val < 1) return;
+                  try {
+                    await fetch(`${API_URL}/v1/platform-settings/wallet_deduction_interval_minutes`, {
+                      method: 'PUT',
+                      headers: authHeaders(),
+                      body: JSON.stringify({ value: String(val) }),
+                    });
+                    showToast(`Deduction interval updated to ${val} minutes`);
+                  } catch {
+                    showToast('Failed to update interval', 'error');
+                  }
+                }}
+              />
+              <span className="text-xs text-slate-500">minutes</span>
+            </div>
+          )}
         </div>
 
       {/* Tabs */}
