@@ -136,9 +136,9 @@ public class WalletDeductionScheduler {
                 deducted++;
 
             } catch (IllegalStateException e) {
-                log.warn("Wallet deduction failed for consumer={}: {}", consumerId, e.getMessage());
+                log.warn("Wallet deduction failed for app={} owner={}: {}", appId, walletOwnerId, e.getMessage());
             } catch (Exception e) {
-                log.error("Wallet deduction error for consumer={}: {}", consumerId, e.getMessage());
+                log.error("Wallet deduction error for app={} owner={}: {}", appId, walletOwnerId, e.getMessage());
             }
         }
 
