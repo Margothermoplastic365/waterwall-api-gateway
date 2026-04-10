@@ -717,8 +717,8 @@ export default function MonetizationPage() {
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Model</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Price</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Billing</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Included Req.</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Overage</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{billingMode === 'PAY_AS_YOU_GO' ? 'Free Requests' : 'Included Req.'}</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{billingMode === 'PAY_AS_YOU_GO' ? 'Cost/Request' : 'Overage'}</th>
                     <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -866,30 +866,49 @@ export default function MonetizationPage() {
                       <option value="YEARLY">Yearly</option>
                     </select>
                   </div>
-                  {/* Included Requests + Overage */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelCls}>Included Requests</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={planForm.includedRequests}
-                        onChange={(e) => setPlanForm((f) => ({ ...f, includedRequests: e.target.value }))}
-                        className={inputCls}
-                        placeholder="e.g. 100000"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Overage Rate</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.0001"
-                        value={planForm.overageRate}
-                        onChange={(e) => setPlanForm((f) => ({ ...f, overageRate: e.target.value }))}
-                        className={inputCls}
-                        placeholder="e.g. 0.001"
-                      />
+                  {/* Included Requests + Per-Request Rate */}
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50/30 p-4">
+                    <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wider mb-3">
+                      {billingMode === 'PAY_AS_YOU_GO' ? 'Pay-As-You-Go Pricing' : 'Usage Limits & Overage'}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelCls}>
+                          {billingMode === 'PAY_AS_YOU_GO' ? 'Free Requests (per month)' : 'Included Requests'}
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={planForm.includedRequests}
+                          onChange={(e) => setPlanForm((f) => ({ ...f, includedRequests: e.target.value }))}
+                          className={inputCls}
+                          placeholder={billingMode === 'PAY_AS_YOU_GO' ? 'e.g. 100' : 'e.g. 100000'}
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {billingMode === 'PAY_AS_YOU_GO'
+                            ? 'Requests within this limit are free each month'
+                            : 'Requests included in the subscription price'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className={labelCls}>
+                          {billingMode === 'PAY_AS_YOU_GO' ? 'Cost per Request' : 'Overage Rate (per request)'}
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={planForm.overageRate}
+                          onChange={(e) => setPlanForm((f) => ({ ...f, overageRate: e.target.value }))}
+                          className={inputCls}
+                          placeholder={billingMode === 'PAY_AS_YOU_GO' ? 'e.g. 0.50' : 'e.g. 0.001'}
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {billingMode === 'PAY_AS_YOU_GO'
+                            ? 'Amount charged per API request after free tier'
+                            : 'Cost per request beyond included allowance'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
