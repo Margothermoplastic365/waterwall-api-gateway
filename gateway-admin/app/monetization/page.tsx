@@ -26,7 +26,20 @@ function authHeaders(): Record<string, string> {
 
 type PricingModel = 'FREE' | 'FLAT_RATE' | 'PAY_PER_USE' | 'TIERED' | 'FREEMIUM';
 type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE';
-type TabKey = 'plans' | 'invoices' | 'revenue';
+type TabKey = 'plans' | 'invoices' | 'revenue' | 'wallets';
+
+interface WalletData {
+  id: string;
+  consumerId: string;
+  balance: number;
+  currency: string;
+  autoTopUpEnabled: boolean;
+  autoTopUpThreshold: number;
+  autoTopUpAmount: number;
+  lowBalanceThreshold: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface PricingPlan {
   id: string;
@@ -390,13 +403,60 @@ export default function MonetizationPage() {
   }, []);
 
   /* ============================================================== */
+  /*  WALLETS state                                                    */
+  /* ============================================================== */
+  const [wallets, setWallets] = useState<WalletData[]>([]);
+  const [walletsLoading, setWalletsLoading] = useState(true);
+  const [walletsError, setWalletsError] = useState('');
+  const [creditModal, setCreditModal] = useState(false);
+  const [creditForm, setCreditForm] = useState({ consumerId: '', amount: '', description: '' });
+  const [crediting, setCrediting] = useState(false);
+
+  const fetchWallets = useCallback(async () => {
+    setWalletsLoading(true);
+    setWalletsError('');
+    try {
+      const res = await fetch(`${API_URL}/v1/monetization/wallets`, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`Failed to load wallets (${res.status})`);
+      const data = await res.json();
+      setWallets(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setWalletsError(err instanceof Error ? err.message : 'Failed to load wallets');
+    } finally {
+      setWalletsLoading(false);
+    }
+  }, []);
+
+  const handleCreditWallet = async () => {
+    if (!creditForm.consumerId || !creditForm.amount) return;
+    setCrediting(true);
+    try {
+      const res = await fetch(`${API_URL}/v1/monetization/wallets/${creditForm.consumerId}/credit`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ amount: creditForm.amount, description: creditForm.description || 'Admin credit' }),
+      });
+      if (!res.ok) throw new Error('Credit failed');
+      showToast('Wallet credited successfully');
+      setCreditModal(false);
+      setCreditForm({ consumerId: '', amount: '', description: '' });
+      fetchWallets();
+    } catch {
+      showToast('Failed to credit wallet', 'error');
+    } finally {
+      setCrediting(false);
+    }
+  };
+
+  /* ============================================================== */
   /*  Data loading on tab change                                      */
   /* ============================================================== */
   useEffect(() => {
     if (activeTab === 'plans') fetchPlans();
     else if (activeTab === 'invoices') fetchInvoices();
     else if (activeTab === 'revenue') fetchRevenue(revenuePeriod);
-  }, [activeTab, fetchPlans, fetchInvoices, fetchRevenue, revenuePeriod]);
+    else if (activeTab === 'wallets') fetchWallets();
+  }, [activeTab, fetchPlans, fetchInvoices, fetchRevenue, revenuePeriod, fetchWallets]);
 
   /* ============================================================== */
   /*  Shared style classes                                            */
@@ -436,6 +496,15 @@ export default function MonetizationPage() {
         icon: (
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+        ),
+      },
+      {
+        key: 'wallets',
+        label: 'Wallets',
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 013 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 013 6v3" />
           </svg>
         ),
       },
@@ -1143,6 +1212,118 @@ export default function MonetizationPage() {
               subtitle="Revenue data will appear once invoices have been generated and processed."
             />
           ) : null}
+        </>
+      )}
+
+      {/* ============================================================== */}
+      {/* WALLETS TAB                                                    */}
+      {/* ============================================================== */}
+      {activeTab === 'wallets' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Developer Wallets</h2>
+            <button
+              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+              onClick={() => setCreditModal(true)}
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Credit Wallet
+            </button>
+          </div>
+
+          {walletsError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-4">{walletsError}</div>
+          )}
+
+          {walletsLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />)}
+            </div>
+          ) : wallets.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">{'\u{1F4B0}'}</div>
+              <h3 className="text-sm font-semibold text-slate-800">No wallets yet</h3>
+              <p className="text-xs text-slate-500 mt-1">Developer wallets will appear here when they top up for the first time.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Consumer ID</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Currency</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Auto Top-Up</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Threshold</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Top-Up Amt</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Low Balance</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wallets.map(w => (
+                    <tr key={w.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <td className="px-4 py-3 text-sm font-mono text-slate-600">{w.consumerId.substring(0, 8)}...</td>
+                      <td className="px-4 py-3 text-sm text-right font-semibold text-slate-900">{fmtCurrency(w.balance, w.currency)}</td>
+                      <td className="px-4 py-3 text-sm text-center"><span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{w.currency}</span></td>
+                      <td className="px-4 py-3 text-sm text-center">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${w.autoTopUpEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {w.autoTopUpEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-slate-600">{w.autoTopUpThreshold ? fmtCurrency(w.autoTopUpThreshold, w.currency) : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-slate-600">{w.autoTopUpAmount ? fmtCurrency(w.autoTopUpAmount, w.currency) : '-'}</td>
+                      <td className="px-4 py-3 text-sm text-right text-slate-600">{w.lowBalanceThreshold ? fmtCurrency(w.lowBalanceThreshold, w.currency) : '-'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                          onClick={() => { setCreditForm({ consumerId: w.consumerId, amount: '', description: '' }); setCreditModal(true); }}
+                        >Credit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Credit Wallet Modal */}
+          {creditModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Credit Developer Wallet</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Consumer ID</label>
+                    <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                      value={creditForm.consumerId} placeholder="UUID of the developer"
+                      onChange={e => setCreditForm(f => ({ ...f, consumerId: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                    <input type="number" className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                      value={creditForm.amount} placeholder="e.g. 5000"
+                      onChange={e => setCreditForm(f => ({ ...f, amount: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                    <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
+                      value={creditForm.description} placeholder="Reason for credit"
+                      onChange={e => setCreditForm(f => ({ ...f, description: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
+                    onClick={() => setCreditModal(false)}>Cancel</button>
+                  <button
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                    disabled={crediting || !creditForm.consumerId || !creditForm.amount}
+                    onClick={handleCreditWallet}
+                  >{crediting ? 'Processing...' : 'Credit Wallet'}</button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

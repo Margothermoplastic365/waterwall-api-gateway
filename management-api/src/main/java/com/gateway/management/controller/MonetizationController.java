@@ -4,8 +4,11 @@ import com.gateway.management.dto.CreatePlanRequest;
 import com.gateway.management.dto.PlanResponse;
 import com.gateway.management.entity.CreditNoteEntity;
 import com.gateway.management.entity.InvoiceEntity;
+import com.gateway.management.entity.WalletEntity;
+import com.gateway.management.repository.WalletRepository;
 import com.gateway.management.service.MonetizationService;
 import com.gateway.management.service.PlanService;
+import com.gateway.management.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +26,8 @@ public class MonetizationController {
 
     private final MonetizationService monetizationService;
     private final PlanService planService;
+    private final WalletRepository walletRepository;
+    private final WalletService walletService;
 
     // ── Pricing Plans (delegates to unified PlanService) ──────────────────
 
@@ -86,5 +91,28 @@ public class MonetizationController {
                 ? new BigDecimal(request.get("amount")) : null;
         String reason = request.getOrDefault("reason", "Admin refund");
         return ResponseEntity.ok(monetizationService.refundInvoice(id, amount, reason));
+    }
+
+    // ── Wallets (Admin) ──────────────────────────────────────────────────
+
+    @GetMapping("/wallets")
+    public ResponseEntity<List<WalletEntity>> listWallets() {
+        return ResponseEntity.ok(walletRepository.findAll());
+    }
+
+    @GetMapping("/wallets/{id}")
+    public ResponseEntity<WalletEntity> getWallet(@PathVariable UUID id) {
+        return ResponseEntity.ok(walletRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Wallet not found: " + id)));
+    }
+
+    @PostMapping("/wallets/{consumerId}/credit")
+    public ResponseEntity<WalletEntity> creditWallet(
+            @PathVariable UUID consumerId,
+            @RequestBody Map<String, String> request) {
+        BigDecimal amount = new BigDecimal(request.get("amount"));
+        String description = request.getOrDefault("description", "Admin credit");
+        String reference = "ADMIN-CREDIT-" + System.currentTimeMillis();
+        return ResponseEntity.ok(walletService.topUp(consumerId, amount, reference, description));
     }
 }
