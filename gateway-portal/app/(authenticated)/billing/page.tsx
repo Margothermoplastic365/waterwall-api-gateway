@@ -161,6 +161,9 @@ export default function BillingPage() {
   // Billing mode
   const [billingMode, setBillingMode] = useState<'SUBSCRIPTION' | 'PAY_AS_YOU_GO'>('SUBSCRIPTION');
 
+  // Page tab navigation
+  const [activeSection, setActiveSection] = useState<'overview' | 'invoices' | 'wallet' | 'settings'>('overview');
+
   // add payment method form
   const [showAddPm, setShowAddPm] = useState(false);
   const [pmForm, setPmForm] = useState({ type: 'CREDIT_CARD', provider: '', providerRef: '' });
@@ -652,6 +655,39 @@ export default function BillingPage() {
         </div>
       )}
 
+      {/* =========== TAB NAVIGATION =========== */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, backgroundColor: '#f1f5f9', borderRadius: 10, padding: 4 }}>
+        {[
+          { key: 'overview', label: 'Overview' },
+          ...(billingMode === 'SUBSCRIPTION' ? [{ key: 'invoices', label: 'Invoices' }] : []),
+          ...(billingMode === 'PAY_AS_YOU_GO' ? [{ key: 'wallet', label: 'Wallet' }] : []),
+          { key: 'settings', label: 'Settings' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveSection(tab.key as typeof activeSection)}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: 8,
+              border: 'none',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              backgroundColor: activeSection === tab.key ? '#fff' : 'transparent',
+              color: activeSection === tab.key ? '#0f172a' : '#64748b',
+              boxShadow: activeSection === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* =========== OVERVIEW TAB =========== */}
+      {activeSection === 'overview' && (<>
+
       {/* =========== 1. USAGE OVERVIEW =========== */}
       {sectionErrors.summary && errBox(sectionErrors.summary)}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
@@ -808,8 +844,10 @@ export default function BillingPage() {
         ) : null}
       </div>
 
-      {/* =========== 5. INVOICES (SUBSCRIPTION mode only) =========== */}
-      {billingMode === 'SUBSCRIPTION' && (
+      </>)}
+
+      {/* =========== INVOICES TAB =========== */}
+      {activeSection === 'invoices' && billingMode === 'SUBSCRIPTION' && (
       <>
       <div style={card}>
         <h2 style={sectionTitle}>Invoices</h2>
@@ -896,6 +934,9 @@ export default function BillingPage() {
 
       </>
       )}
+
+      {/* =========== SETTINGS TAB =========== */}
+      {activeSection === 'settings' && (<>
 
       {/* =========== 6. PAYMENT METHODS =========== */}
       <div style={card}>
@@ -1014,8 +1055,10 @@ export default function BillingPage() {
           )}
       </div>
 
-      {/* =========== 7. WALLET (PAY_AS_YOU_GO mode only) =========== */}
-      {billingMode === 'PAY_AS_YOU_GO' && (
+      </>)}
+
+      {/* =========== WALLET TAB =========== */}
+      {activeSection === 'wallet' && billingMode === 'PAY_AS_YOU_GO' && (
       <>
       <div style={card}>
         <h2 style={sectionTitle}>Wallet</h2>
@@ -1230,7 +1273,8 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* =========== 8. USAGE ALERTS =========== */}
+      {/* =========== 8. USAGE ALERTS (only in settings tab) =========== */}
+      {activeSection === 'settings' && (
       <div style={card}>
         <h2 style={sectionTitle}>Usage Alerts</h2>
         <p style={{ fontSize: 13, color: '#94a3b8', margin: '-8px 0 20px' }}>Get notified when your usage exceeds thresholds</p>
@@ -1359,6 +1403,7 @@ export default function BillingPage() {
             </div>
           )}
       </div>
+      )}
     </div>
   );
 }
