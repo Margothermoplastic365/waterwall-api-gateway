@@ -234,7 +234,8 @@ public class RouteConfigService {
 
     private List<GatewayRoute> loadRoutes() {
         String sql = """
-                SELECT r.id, r.api_id, a.name as api_name, r.path, r.method, r.upstream_url,
+                SELECT r.id, r.api_id, a.name as api_name, a.context_path, a.version as api_version,
+                       r.path, r.method, r.upstream_url,
                        r.auth_types, r.priority, r.strip_prefix, r.enabled,
                        a.backend_base_url, a.status as api_status
                 FROM gateway.routes r
@@ -263,7 +264,9 @@ public class RouteConfigService {
                     .routeId(rs.getObject("id", UUID.class))
                     .apiId(rs.getObject("api_id", UUID.class))
                     .apiName(rs.getString("api_name"))
-                    .path(rs.getString("path"))
+                    .path(buildGatewayPath(rs.getString("context_path"), rs.getString("api_version"), rs.getString("path")))
+                    .contextPath(rs.getString("context_path"))
+                    .apiVersion(rs.getString("api_version"))
                     .method(rs.getString("method"))
                     .upstreamUrl(upstreamUrl)
                     .authTypes(authTypes)
@@ -363,6 +366,30 @@ public class RouteConfigService {
             }
             return sub;
         });
+    }
+
+    /**
+     * Builds the full gateway path: /{context_path}/{version}/{route_path}
+     * Falls back gracefully if context_path or version is missing.
+     */
+    private String buildGatewayPath(String contextPath, String version, String routePath) {
+        StringBuilder sb = new StringBuilder();
+        if (contextPath != null && !contextPath.isBlank()) {
+            if (!contextPath.startsWith("/")) sb.append("/");
+            sb.append(contextPath);
+        }
+        if (version != null && !version.isBlank()) {
+            sb.append("/").append(version);
+        }
+        if (routePath != null) {
+            if (!routePath.startsWith("/")) sb.append("/");
+            sb.append(routePath);
+        }
+        String result = sb.toString();
+        // Normalize double slashes
+        result = result.replaceAll("/+", "/");
+        if (result.isEmpty()) result = "/";
+        return result;
     }
 
     private List<String> parseJsonStringList(String json) {

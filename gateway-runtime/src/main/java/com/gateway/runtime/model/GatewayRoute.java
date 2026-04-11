@@ -21,6 +21,8 @@ public class GatewayRoute {
     private UUID routeId;
     private UUID apiId;
     private String apiName;
+    private String contextPath;
+    private String apiVersion;
     private String path;
     private String method;
     private String upstreamUrl;
