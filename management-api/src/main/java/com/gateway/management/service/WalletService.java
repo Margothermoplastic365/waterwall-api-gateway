@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -33,6 +35,7 @@ public class WalletService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final PaymentGatewaySettingsService paymentGatewaySettingsService;
     private final EventPublisher eventPublisher;
+    private final LedgerService ledgerService;
 
     @Transactional
     public WalletEntity getOrCreateWallet(UUID consumerId) {
@@ -62,22 +65,14 @@ public class WalletService {
     @Transactional
     public WalletEntity topUp(UUID consumerId, BigDecimal amount, String reference, String description) {
         WalletEntity wallet = getOrCreateWallet(consumerId);
-        wallet.setBalance(wallet.getBalance().add(amount));
-        wallet = walletRepository.save(wallet);
 
-        WalletTransactionEntity txn = WalletTransactionEntity.builder()
-                .walletId(wallet.getId())
-                .type("CREDIT")
-                .amount(amount)
-                .currency(wallet.getCurrency())
-                .reference(reference)
-                .description(description != null ? description : "Wallet top-up")
-                .balanceAfter(wallet.getBalance())
-                .build();
-        walletTransactionRepository.save(txn);
+        ledgerService.credit(wallet.getId(), amount,
+                com.gateway.management.entity.LedgerEntryEntity.CAT_TOP_UP,
+                reference, description != null ? description : "Wallet top-up",
+                Map.of("consumerId", consumerId.toString()));
 
-        log.info("Wallet topped up: consumer={} amount={} newBalance={}", consumerId, amount, wallet.getBalance());
-        return wallet;
+        // Refresh wallet from DB (LedgerService updated the cached balance)
+        return walletRepository.findById(wallet.getId()).orElse(wallet);
     }
 
     @Transactional
@@ -85,35 +80,17 @@ public class WalletService {
                                 String description, UUID invoiceId) {
         WalletEntity wallet = getOrCreateWallet(consumerId);
 
-        if (wallet.getBalance().compareTo(amount) < 0) {
-            throw new IllegalStateException("Insufficient wallet balance. Available: "
-                    + wallet.getBalance() + ", Required: " + amount);
-        }
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("consumerId", consumerId.toString());
+        if (invoiceId != null) metadata.put("invoiceId", invoiceId.toString());
 
-        wallet.setBalance(wallet.getBalance().subtract(amount));
-        wallet = walletRepository.save(wallet);
+        ledgerService.debit(wallet.getId(), amount,
+                com.gateway.management.entity.LedgerEntryEntity.CAT_USAGE_CHARGE,
+                reference, description != null ? description : "Payment deduction",
+                null, null, null, metadata);
 
-        WalletTransactionEntity txn = WalletTransactionEntity.builder()
-                .walletId(wallet.getId())
-                .type("DEBIT")
-                .amount(amount)
-                .currency(wallet.getCurrency())
-                .reference(reference)
-                .description(description != null ? description : "Payment deduction")
-                .balanceAfter(wallet.getBalance())
-                .relatedInvoiceId(invoiceId)
-                .build();
-        walletTransactionRepository.save(txn);
-
-        log.info("Wallet debited: consumer={} amount={} newBalance={}", consumerId, amount, wallet.getBalance());
-
-        // Check low balance threshold and notify
-        if (wallet.getLowBalanceThreshold() != null
-                && wallet.getBalance().compareTo(wallet.getLowBalanceThreshold()) < 0) {
-            publishLowBalanceAlert(consumerId, wallet.getBalance(), wallet.getLowBalanceThreshold());
-        }
-
-        return wallet;
+        // Refresh wallet from DB
+        return walletRepository.findById(wallet.getId()).orElse(wallet);
     }
 
     @Transactional(readOnly = true)
@@ -147,7 +124,7 @@ public class WalletService {
     @Transactional(readOnly = true)
     public boolean hasSufficientBalance(UUID consumerId, BigDecimal amount) {
         return walletRepository.findByConsumerId(consumerId)
-                .map(w -> w.getBalance().compareTo(amount) >= 0)
+                .map(w -> ledgerService.getBalanceFromLedger(w.getId()).compareTo(amount) >= 0)
                 .orElse(false);
     }
 
@@ -157,7 +134,7 @@ public class WalletService {
     @Transactional(readOnly = true)
     public BigDecimal getBalance(UUID consumerId) {
         return walletRepository.findByConsumerId(consumerId)
-                .map(WalletEntity::getBalance)
+                .map(w -> ledgerService.getBalanceFromLedger(w.getId()))
                 .orElse(BigDecimal.ZERO);
     }
 
@@ -223,16 +200,6 @@ public class WalletService {
                 .build();
         paymentMethodRepository.save(pm);
         log.info("Payment method saved from top-up: consumer={} provider={}", consumerId, providerName);
-    }
-
-    private void publishLowBalanceAlert(UUID consumerId, BigDecimal balance, BigDecimal threshold) {
-        log.warn("Low wallet balance: consumer={} balance={} threshold={}", consumerId, balance, threshold);
-        BillingSchedulerService.BillingEvent event = BillingSchedulerService.BillingEvent.builder()
-                .eventType("wallet.low_balance")
-                .actorId("wallet-service")
-                .consumerId(consumerId.toString())
-                .build();
-        eventPublisher.publish(RabbitMQExchanges.PLATFORM_EVENTS, "wallet.low_balance", event);
     }
 
     private UUID resolveConsumerId() {
