@@ -34,6 +34,9 @@ public class ApiEntity {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
+    @Column(name = "context_path", length = 100, unique = true)
+    private String contextPath;
+
     @Column(name = "version", length = 50)
     private String version;
 

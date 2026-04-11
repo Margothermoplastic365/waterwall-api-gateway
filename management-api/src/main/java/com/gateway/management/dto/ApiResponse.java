@@ -21,6 +21,7 @@ public class ApiResponse {
 
     private UUID id;
     private String name;
+    private String contextPath;
     private String version;
     private String description;
     private ApiStatus status;

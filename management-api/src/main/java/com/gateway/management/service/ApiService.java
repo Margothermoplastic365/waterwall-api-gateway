@@ -44,6 +44,7 @@ public class ApiService {
 
         ApiEntity entity = ApiEntity.builder()
                 .name(request.getName())
+                .contextPath(request.getContextPath())
                 .version(request.getVersion())
                 .description(request.getDescription())
                 .status(ApiStatus.CREATED)
@@ -55,6 +56,10 @@ public class ApiService {
                 .createdBy(currentUserId != null ? UUID.fromString(currentUserId) : null)
                 .orgId(currentOrgId != null ? UUID.fromString(currentOrgId) : null)
                 .build();
+
+        if (entity.getContextPath() == null || entity.getContextPath().isBlank()) {
+            entity.setContextPath(generateContextPath(entity.getName()));
+        }
 
         ApiEntity saved = apiRepository.save(entity);
         // Set api_group_id to own id for new APIs (first version)
@@ -278,6 +283,15 @@ public class ApiService {
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
+    private String generateContextPath(String name) {
+        if (name == null) return "api-" + UUID.randomUUID().toString().substring(0, 8);
+        String slug = name.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
+        if (slug.isEmpty()) slug = "api-" + UUID.randomUUID().toString().substring(0, 8);
+        return slug;
+    }
+
     private ApiEntity findApiOrThrow(UUID id) {
         return apiRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("API not found: " + id));
@@ -299,6 +313,7 @@ public class ApiService {
         return ApiResponse.builder()
                 .id(entity.getId())
                 .name(entity.getName())
+                .contextPath(entity.getContextPath())
                 .version(entity.getVersion())
                 .description(entity.getDescription())
                 .status(entity.getStatus())

@@ -19,6 +19,8 @@ public class CreateApiRequest {
     @NotBlank(message = "API name is required")
     private String name;
 
+    private String contextPath;
+
     @Builder.Default
     private String version = "1.0.0";
 

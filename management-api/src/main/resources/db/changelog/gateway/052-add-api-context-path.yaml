@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: gw-052-add-context-path-to-apis
+      author: gateway-team
+      changes:
+        - addColumn:
+            schemaName: gateway
+            tableName: apis
+            columns:
+              - column:
+                  name: context_path
+                  type: varchar(100)
+        - addUniqueConstraint:
+            schemaName: gateway
+            tableName: apis
+            columnNames: context_path
+            constraintName: uk_api_context_path
+
+  - changeSet:
+      id: gw-052-auto-generate-context-paths
+      author: gateway-team
+      comment: Generate context_path from existing API names for APIs that don't have one
+      changes:
+        - sql:
+            sql: |
+              UPDATE gateway.apis
+              SET context_path = LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '[^a-zA-Z0-9]+', '-', 'g'), '(^-|-$)', '', 'g'))
+              WHERE context_path IS NULL;
+
+              -- Handle duplicates by appending a suffix
+              UPDATE gateway.apis a
+              SET context_path = a.context_path || '-' || LEFT(a.id::text, 4)
+              WHERE a.context_path IN (
+                SELECT context_path FROM gateway.apis GROUP BY context_path HAVING COUNT(*) > 1
+              );
