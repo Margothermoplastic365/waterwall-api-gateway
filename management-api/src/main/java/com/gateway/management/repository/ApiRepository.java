@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -19,6 +20,8 @@ public interface ApiRepository extends JpaRepository<ApiEntity, UUID>, JpaSpecif
     Page<ApiEntity> findByStatus(ApiStatus status, Pageable pageable);
 
     List<ApiEntity> findByOrgId(UUID orgId);
+
+    Optional<ApiEntity> findByContextPath(String contextPath);
 
     @Query("SELECT a FROM ApiEntity a WHERE LOWER(a.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "OR LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")

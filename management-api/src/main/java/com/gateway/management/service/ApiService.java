@@ -145,6 +145,8 @@ public class ApiService {
     public void deleteApi(UUID id) {
         ApiEntity entity = findApiOrThrow(id);
         entity.setStatus(ApiStatus.RETIRED);
+        // Free up the context_path so it can be reused by new APIs
+        entity.setContextPath(entity.getContextPath() + "-retired-" + id.toString().substring(0, 4));
         apiRepository.save(entity);
         log.info("API soft-deleted (retired): id={}", id);
     }
@@ -292,7 +294,16 @@ public class ApiService {
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-|-$)", "");
         if (slug.isEmpty()) slug = "api-" + UUID.randomUUID().toString().substring(0, 8);
-        return slug;
+
+        // Ensure uniqueness — append short UUID suffix if slug already exists
+        String candidate = slug;
+        int attempt = 0;
+        while (apiRepository.findByContextPath(candidate).isPresent()) {
+            attempt++;
+            candidate = slug + "-" + UUID.randomUUID().toString().substring(0, 4);
+            if (attempt > 10) break;
+        }
+        return candidate;
     }
 
     private ApiEntity findApiOrThrow(UUID id) {
