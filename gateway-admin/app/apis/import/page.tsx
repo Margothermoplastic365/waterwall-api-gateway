@@ -50,6 +50,7 @@ export default function ImportApiPage() {
   const [format, setFormat] = useState('AUTO');
   const [sensitivity, setSensitivity] = useState('LOW');
   const [category, setCategory] = useState('');
+  const [contextPath, setContextPath] = useState('');
 
   // File upload
   const fileRef = useRef<HTMLInputElement>(null);
@@ -121,6 +122,7 @@ export default function ImportApiPage() {
     setImportError('');
     try {
       const body: Record<string, string> = { format, sensitivity, category };
+      if (contextPath.trim()) body.contextPath = contextPath.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
       if (sourceTab === 'url') body.url = url;
       else body.content = getContent();
 
@@ -252,6 +254,20 @@ export default function ImportApiPage() {
               <input type="text" value={category} onChange={(e) => setCategory(e.target.value)}
                 placeholder="e.g. Finance, Logistics"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Context Path</label>
+              <div className="flex items-center gap-1">
+                <span className="text-gray-400 text-sm font-mono">/</span>
+                <input
+                  type="text"
+                  value={contextPath}
+                  onChange={(e) => setContextPath(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="auto-generated-from-name"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">URL prefix on the gateway. Leave blank to auto-generate.</p>
             </div>
           </div>
 

@@ -20,6 +20,7 @@ interface ApiDetail {
   visibility?: string;
   category?: string;
   tags?: string[];
+  contextPath?: string;
   backendBaseUrl?: string;
   sensitivity?: string;
   versionStatus?: string;
@@ -779,6 +780,41 @@ export default function ApiDetailPage({ params }: { params: { id: string } }) {
       {/* ── Overview ── */}
       {tab === 'overview' && (
         <div className="space-y-5">
+          {/* Context Path */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Context Path</h3>
+            <p className="text-xs text-slate-400 mb-3">
+              The URL path prefix under which this API is exposed on the gateway. Must contain only lowercase letters, numbers, and hyphens.
+            </p>
+            <div className="flex gap-2 items-center">
+              <span className="text-slate-400 text-sm font-mono">/</span>
+              <input
+                type="text"
+                defaultValue={api.contextPath || ''}
+                id="contextPathInput"
+                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none font-mono text-slate-800"
+                placeholder="auto-generated-from-name"
+              />
+              <button
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                onClick={async () => {
+                  const input = document.getElementById('contextPathInput') as HTMLInputElement;
+                  const newPath = input.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+                  if (newPath) {
+                    await put(`/v1/apis/${api.id}`, { contextPath: newPath });
+                    setApi({ ...api, contextPath: newPath });
+                    showToast('Context path updated');
+                  }
+                }}
+              >Save</button>
+            </div>
+            {api.contextPath && (
+              <p className="text-xs text-slate-500 mt-2">
+                Gateway URL: <code className="bg-slate-50 px-1.5 py-0.5 rounded text-[11px] font-mono">/{api.contextPath}/...</code>
+              </p>
+            )}
+          </div>
+
           {/* Backend Base URL — editable */}
           <div className="bg-white border border-slate-200 rounded-xl p-6">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">Backend Base URL</h3>
