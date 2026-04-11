@@ -27,6 +27,7 @@ public class WalletController {
 
     private final WalletService walletService;
     private final PaymentProviderFactory paymentProviderFactory;
+    private final com.gateway.management.service.LedgerService ledgerService;
 
     @GetMapping
     public ResponseEntity<WalletEntity> getWallet() {
@@ -99,6 +100,23 @@ public class WalletController {
         response.put("page", result.getNumber());
         response.put("size", result.getSize());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/statement")
+    public ResponseEntity<Map<String, Object>> getStatement(
+            @RequestParam(required = false) String period) {
+        String userId = SecurityContextHelper.getCurrentUserId();
+        WalletEntity wallet = walletService.getOrCreateWallet(UUID.fromString(userId));
+        return ResponseEntity.ok(ledgerService.getStatement(wallet.getId(), period));
+    }
+
+    @GetMapping("/ledger")
+    public ResponseEntity<Page<com.gateway.management.entity.LedgerEntryEntity>> getLedgerEntries(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        String userId = SecurityContextHelper.getCurrentUserId();
+        WalletEntity wallet = walletService.getOrCreateWallet(UUID.fromString(userId));
+        return ResponseEntity.ok(ledgerService.getTransactions(wallet.getId(), PageRequest.of(page, size)));
     }
 
     @PutMapping("/settings")

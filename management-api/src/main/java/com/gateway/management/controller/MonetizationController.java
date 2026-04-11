@@ -28,6 +28,7 @@ public class MonetizationController {
     private final PlanService planService;
     private final WalletRepository walletRepository;
     private final WalletService walletService;
+    private final com.gateway.management.service.LedgerService ledgerService;
 
     // ── Pricing Plans (delegates to unified PlanService) ──────────────────
 
@@ -104,6 +105,26 @@ public class MonetizationController {
     public ResponseEntity<WalletEntity> getWallet(@PathVariable UUID id) {
         return ResponseEntity.ok(walletRepository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Wallet not found: " + id)));
+    }
+
+    @GetMapping("/wallets/{consumerId}/statement")
+    public ResponseEntity<Map<String, Object>> getWalletStatement(
+            @PathVariable UUID consumerId,
+            @RequestParam(required = false) String period) {
+        WalletEntity wallet = walletRepository.findByConsumerId(consumerId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Wallet not found for consumer: " + consumerId));
+        return ResponseEntity.ok(ledgerService.getStatement(wallet.getId(), period));
+    }
+
+    @GetMapping("/wallets/{consumerId}/ledger")
+    public ResponseEntity<java.util.List<com.gateway.management.entity.LedgerEntryEntity>> getWalletLedger(
+            @PathVariable UUID consumerId) {
+        WalletEntity wallet = walletRepository.findByConsumerId(consumerId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Wallet not found for consumer: " + consumerId));
+        String period = java.time.YearMonth.now().toString();
+        return ResponseEntity.ok(ledgerService.getStatement(wallet.getId(), period).get("transactions") != null
+                ? (java.util.List<com.gateway.management.entity.LedgerEntryEntity>) ledgerService.getStatement(wallet.getId(), period).get("transactions")
+                : java.util.List.of());
     }
 
     @PostMapping("/wallets/{consumerId}/credit")
