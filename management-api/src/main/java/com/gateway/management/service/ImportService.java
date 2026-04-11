@@ -139,6 +139,16 @@ public class ImportService {
                 .orgId(currentOrgId != null ? UUID.fromString(currentOrgId) : null)
                 .build();
 
+        // Auto-generate context path from API name
+        String contextPath = request.getContextPath();
+        if (contextPath == null || contextPath.isBlank()) {
+            contextPath = api.getName().toLowerCase()
+                    .replaceAll("[^a-z0-9]+", "-")
+                    .replaceAll("(^-|-$)", "");
+            if (contextPath.isEmpty()) contextPath = "api-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        }
+        api.setContextPath(contextPath);
+
         ApiEntity saved = apiRepository.save(api);
         saved.setApiGroupId(saved.getId());
         saved.setApiGroupName(saved.getName());

@@ -25,4 +25,6 @@ public class UpdateApiRequest {
     private Visibility visibility;
 
     private String backendBaseUrl;
+
+    private String contextPath;
 }

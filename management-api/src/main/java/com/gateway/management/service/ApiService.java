@@ -131,6 +131,9 @@ public class ApiService {
         if (request.getBackendBaseUrl() != null) {
             entity.setBackendBaseUrl(request.getBackendBaseUrl());
         }
+        if (request.getContextPath() != null) {
+            entity.setContextPath(request.getContextPath());
+        }
 
         ApiEntity saved = apiRepository.save(entity);
         List<RouteEntity> routes = routeRepository.findByApiId(id);

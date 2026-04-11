@@ -14,4 +14,5 @@ public class ImportApiRequest {
     private String format; // AUTO, OPENAPI, SWAGGER, ASYNCAPI, GRAPHQL, PROTOBUF, WSDL, POSTMAN, OPENRPC, ODATA, HAR
     private String sensitivity; // LOW, MEDIUM, HIGH, CRITICAL
     private String category;
+    private String contextPath;
 }
