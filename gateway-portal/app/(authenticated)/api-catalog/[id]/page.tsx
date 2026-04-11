@@ -46,6 +46,7 @@ interface ApiDetail {
   versionStatus: string;
   deprecatedMessage: string;
   successorVersionId: string;
+  contextPath: string;
 }
 
 interface ApiVersion {
@@ -201,7 +202,10 @@ export default function ApiDetailPage() {
     setTryError('');
     setTryResponse(null);
 
-    const url = `${GATEWAY_URL}${route.path}`;
+    // Build full gateway URL with context path and version
+    const ctxPath = api?.contextPath ? `/${api.contextPath}` : '';
+    const verPath = api?.version ? `/${api.version}` : '';
+    const url = `${GATEWAY_URL}${ctxPath}${verPath}${route.path}`;
     const hdrs: Record<string, string> = {
       'Content-Type': isSoap ? 'text/xml; charset=utf-8' : 'application/json',
     };
@@ -420,7 +424,7 @@ export default function ApiDetailPage() {
 
     const specWithGateway = {
       ...rawSpec,
-      servers: [{ url: GATEWAY_URL, description: 'Waterwall API Gateway' }],
+      servers: [{ url: `${GATEWAY_URL}${api?.contextPath ? '/' + api.contextPath : ''}${api?.version ? '/' + api.version : ''}`, description: 'Waterwall API Gateway' }],
       components,
       security: globalSecurity,
       // Also override Swagger 2.0 securityDefinitions if present

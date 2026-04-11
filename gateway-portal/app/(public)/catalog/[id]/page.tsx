@@ -176,7 +176,10 @@ export default function ApiDetailPage() {
   };
 
   const copyCurlSample = () => {
-    const curlCmd = `curl -X GET "${API_BASE}${api?.contextPath || '/'}" \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Accept: application/json"`;
+    const gwUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:8080';
+    const ctxPath = api?.contextPath ? `/${api.contextPath}` : '';
+    const verPath = api?.version ? `/${api.version}` : '';
+    const curlCmd = `curl -X GET "${gwUrl}${ctxPath}${verPath}/" \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Accept: application/json"`;
     navigator.clipboard.writeText(curlCmd);
     setCurlCopied(true);
     setTimeout(() => setCurlCopied(false), 2000);
