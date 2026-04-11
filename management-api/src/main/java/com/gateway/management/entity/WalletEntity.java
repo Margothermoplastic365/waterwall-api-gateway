@@ -54,6 +54,12 @@ public class WalletEntity {
     @Column(name = "pending_topup_reference", length = 255)
     private String pendingTopupReference;
 
+    @Column(name = "last_reconciled_at")
+    private Instant lastReconciledAt;
+
+    @Column(name = "current_period", length = 20)
+    private String currentPeriod;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
