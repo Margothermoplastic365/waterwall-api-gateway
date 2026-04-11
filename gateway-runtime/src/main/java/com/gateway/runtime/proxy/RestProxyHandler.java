@@ -204,8 +204,26 @@ public class RestProxyHandler implements ProtocolProxyHandler {
         String routePath = route.getPath();
         String remainingPath;
 
+        // Always strip the context path prefix — it's a gateway namespace, not part of the upstream path
+        String contextPath = route.getContextPath();
+        if (contextPath != null && !contextPath.isBlank()) {
+            String ctxPrefix = contextPath.startsWith("/") ? contextPath : "/" + contextPath;
+            if (requestPath.startsWith(ctxPrefix)) {
+                requestPath = requestPath.substring(ctxPrefix.length());
+                if (requestPath.isEmpty()) requestPath = "/";
+            }
+        }
+
         if (route.isStripPrefix() && routePath != null) {
-            String staticPrefix = routePath.replaceAll("/\\*\\*$", "")
+            // Strip the route's own path (without context prefix) from the request
+            String routeWithoutCtx = routePath;
+            if (contextPath != null && !contextPath.isBlank()) {
+                String ctxPrefix = contextPath.startsWith("/") ? contextPath : "/" + contextPath;
+                if (routeWithoutCtx.startsWith(ctxPrefix)) {
+                    routeWithoutCtx = routeWithoutCtx.substring(ctxPrefix.length());
+                }
+            }
+            String staticPrefix = routeWithoutCtx.replaceAll("/\\*\\*$", "")
                     .replaceAll("/\\{[^}]+}.*", "");
             if (!staticPrefix.isEmpty() && requestPath.startsWith(staticPrefix)) {
                 remainingPath = requestPath.substring(staticPrefix.length());
