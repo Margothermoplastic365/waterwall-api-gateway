@@ -24,6 +24,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Order(40) — Verifies that the authenticated application has an active subscription
@@ -42,6 +43,18 @@ public class SubscriptionCheckFilter implements Filter {
     private final RouteConfigService routeConfigService;
     private final ObjectMapper objectMapper;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    // ── Caches to avoid DB queries per request ──────────────────────────
+    private static final long BILLING_MODE_TTL_MS = 30_000; // 30 seconds
+    private static final long WALLET_BALANCE_TTL_MS = 15_000; // 15 seconds
+
+    private volatile String cachedBillingMode = null;
+    private volatile long billingModeCacheExpiry = 0;
+
+    private final ConcurrentHashMap<UUID, CachedBalance> walletBalanceCache = new ConcurrentHashMap<>();
+
+    private record CachedBalance(boolean empty, long expiresAt) {}
+
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain)
@@ -147,30 +160,43 @@ public class SubscriptionCheckFilter implements Filter {
     }
 
     private boolean isPayAsYouGoMode() {
+        long now = System.currentTimeMillis();
+        if (cachedBillingMode != null && now < billingModeCacheExpiry) {
+            return "PAY_AS_YOU_GO".equals(cachedBillingMode);
+        }
         try {
             String mode = jdbcTemplate.queryForObject(
                     "SELECT setting_value FROM gateway.platform_settings WHERE setting_key = 'billing_mode'",
                     String.class);
+            cachedBillingMode = mode;
+            billingModeCacheExpiry = now + BILLING_MODE_TTL_MS;
             return "PAY_AS_YOU_GO".equals(mode);
         } catch (Exception e) {
+            cachedBillingMode = "SUBSCRIPTION";
+            billingModeCacheExpiry = now + BILLING_MODE_TTL_MS;
             return false;
         }
     }
 
     private boolean hasEmptyWallet(UUID appId) {
+        long now = System.currentTimeMillis();
+        CachedBalance cached = walletBalanceCache.get(appId);
+        if (cached != null && now < cached.expiresAt()) {
+            return cached.empty();
+        }
         try {
-            // Check wallet for the app's owner (user_id from identity.applications)
-            // Also check directly by appId in case consumer_id is the appId
             java.math.BigDecimal balance = jdbcTemplate.queryForObject(
                     "SELECT COALESCE(w.balance, 0) FROM gateway.wallets w " +
                     "WHERE w.consumer_id = ? " +
                     "OR w.consumer_id = (SELECT user_id FROM identity.applications WHERE id = ? LIMIT 1) " +
                     "ORDER BY w.balance DESC LIMIT 1",
                     java.math.BigDecimal.class, appId, appId);
-            return balance == null || balance.signum() <= 0;
+            boolean empty = balance == null || balance.signum() <= 0;
+            walletBalanceCache.put(appId, new CachedBalance(empty, now + WALLET_BALANCE_TTL_MS));
+            return empty;
         } catch (Exception e) {
-            // No wallet found — treat as empty
             log.debug("Wallet lookup failed for appId={}: {}", appId, e.getMessage());
+            walletBalanceCache.put(appId, new CachedBalance(true, now + WALLET_BALANCE_TTL_MS));
             return true;
         }
     }
