@@ -125,7 +125,7 @@ public class GatewayAuthFilter implements Filter {
         if (keyInfo == null || !keyInfo.active()) {
             throw new AuthenticationFailedException("AUTH_API_KEY_INVALID", "Invalid or inactive API key");
         }
-        log.info("API key resolved: appId={}, active={}", keyInfo.appId(), keyInfo.active());
+        log.debug("API key resolved: appId={}, active={}", keyInfo.appId(), keyInfo.active());
 
         GatewayAuthentication authentication = new GatewayAuthentication(
                 keyInfo.appId(),
@@ -142,7 +142,7 @@ public class GatewayAuthFilter implements Filter {
         request.setAttribute(ATTR_ENVIRONMENT, keyInfo.environmentSlug() != null ? keyInfo.environmentSlug() : "dev");
         request.setAttribute("gateway.consumerId", keyInfo.appId());
         request.setAttribute("gateway.applicationId", keyInfo.appId());
-        log.info("API key authenticated: consumerId={}, appId={}, orgId={}", keyInfo.appId(), keyInfo.appId(), keyInfo.orgId());
+        log.debug("API key authenticated: consumerId={}, appId={}, orgId={}", keyInfo.appId(), keyInfo.appId(), keyInfo.orgId());
     }
 
     private void handleJwtAuth(HttpServletRequest request, String token) {
@@ -178,14 +178,18 @@ public class GatewayAuthFilter implements Filter {
         log.debug("No credentials provided — anonymous access");
     }
 
+    // ThreadLocal avoids MessageDigest.getInstance() lookup per request
+    private static final ThreadLocal<MessageDigest> SHA256_DIGEST = ThreadLocal.withInitial(() -> {
+        try { return MessageDigest.getInstance("SHA-256"); }
+        catch (NoSuchAlgorithmException e) { throw new IllegalStateException("SHA-256 not available", e); }
+    });
+    private static final HexFormat HEX = HexFormat.of();
+
     private String hashApiKey(String apiKey) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(apiKey.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
+        MessageDigest digest = SHA256_DIGEST.get();
+        digest.reset();
+        byte[] hash = digest.digest(apiKey.getBytes(StandardCharsets.UTF_8));
+        return HEX.formatHex(hash);
     }
 
     private ApiKeyInfo validateKeyWithIdentityService(String keyHash) {

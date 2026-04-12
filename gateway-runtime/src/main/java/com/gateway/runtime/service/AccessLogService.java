@@ -56,7 +56,7 @@ public class AccessLogService {
                     upstreamLatencyMs, gatewayLatencyMs, requestSize, responseSize,
                     traceId, spanId);
             eventPublisher.publish(RabbitMQExchanges.ANALYTICS_INGEST, "request.logged", event);
-            log.info("Published access log: trace={} {} {} -> {} ({}ms)",
+            log.debug("Published access log: trace={} {} {} -> {} ({}ms)",
                     traceId, request.getMethod(), request.getRequestURI(), statusCode, totalLatencyMs);
         } catch (Exception ex) {
             log.error("Failed to publish access log event: {}", ex.getMessage(), ex);

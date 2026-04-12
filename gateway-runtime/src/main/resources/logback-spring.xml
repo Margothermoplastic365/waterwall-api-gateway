@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console appender (synchronous, for low-volume output) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Async wrapper around console — decouples log writing from request threads -->
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="CONSOLE" />
+    </appender>
+
+    <!-- Gateway runtime filters and proxy — use async to avoid blocking request threads -->
+    <logger name="com.gateway.runtime" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </logger>
+
+    <!-- Quiet noisy libraries -->
+    <logger name="org.springframework" level="WARN" />
+    <logger name="org.apache.hc" level="WARN" />
+    <logger name="com.zaxxer.hikari" level="INFO" />
+    <logger name="liquibase" level="INFO" />
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC_CONSOLE" />
+    </root>
+</configuration>

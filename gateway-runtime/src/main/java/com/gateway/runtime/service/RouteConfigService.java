@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Loads route, plan, and subscription configuration from the gateway schema
@@ -42,8 +41,6 @@ public class RouteConfigService {
     private volatile Map<String, GatewaySubscription> subscriptionIndex = Map.of();
     // Per-API gateway_config JSONB keyed by api ID
     private volatile Map<UUID, String> gatewayConfigByApiId = Map.of();
-
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     // ── Config versioning ────────────────────────────────────────────────
     private final AtomicLong configVersion = new AtomicLong(0);
