@@ -40,9 +40,10 @@ Waterwall is a production-grade API gateway platform for publishing, securing, m
 - Alerting via email, webhook, and Slack
 
 ### Monetization
-- Pricing plans and subscription management
-- Paystack payment integration
-- Usage-based billing
+- Pricing plans (Free, Flat Rate, Pay-per-Use, Tiered, Freemium) and subscription management
+- Multi-provider payments: Paystack, Stripe, Flutterwave (admin-configurable)
+- Wallet system with pay-as-you-go billing and auto top-up
+- Double-entry accounting ledger with automated invoicing and dunning
 
 ### Notifications
 - Asynchronous event processing via RabbitMQ
@@ -465,6 +466,32 @@ All other services are completely unaffected — they always use PostgreSQL.
 ```bash
 ./scripts/migrate-to-clickhouse.sh
 ```
+
+---
+
+## Performance
+
+Waterwall uses Java 21 Virtual Threads for high-concurrency request handling. We load-tested the gateway with [Vegeta](https://github.com/tsenart/vegeta) running all 7 services, PostgreSQL, and RabbitMQ on a single machine.
+
+### Results (Windows 11 — AMD Ryzen 9 7945HX, 32 GB RAM)
+
+| Rate | Success | p50 | p95 | p99 | Total Requests |
+|---|---|---|---|---|---|
+| 100 rps | 100% | 1.2 ms | 3.3 ms | 12.5 ms | 1,500 |
+| 500 rps | 100% | 1.1 ms | 4.2 ms | 9.9 ms | 7,500 |
+| 1,000 rps | 100% | 1.5 ms | 8.0 ms | 20.8 ms | 15,000 |
+| 2,000 rps | 100% | 1.3 ms | 8.0 ms | 20.1 ms | 119,998 |
+| 3,000 rps | 100% | 3.5 ms | 22.0 ms | 34.6 ms | 45,000 |
+| 4,000 rps | 100% | 8.5 ms | 30.5 ms | 65.3 ms | 60,000 |
+
+**Key optimizations:**
+- Virtual thread pinning fix — moved RabbitMQ publishing to dedicated platform thread pools (9x throughput improvement)
+- Lock-free route configuration — volatile references to immutable collections
+- Async access logging — decoupled from the request hot path
+- Backpressure filter — 503 + Retry-After instead of connection drops
+- Early route rejection — moved route matching to filter Order 5
+
+> **Linux benchmarks coming soon.** The above results are from Windows. We expect significantly higher throughput on Linux with kernel-level optimizations (epoll, TCP tuning, cgroup isolation).
 
 ---
 
