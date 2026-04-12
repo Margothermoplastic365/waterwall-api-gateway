@@ -38,58 +38,37 @@ public class CircuitBreaker {
      */
     public boolean isOpen(String url) {
         CircuitState state = circuits.get(url);
-        if (state == null) {
-            return false;
-        }
+        if (state == null) return false;
 
-        synchronized (state) {
-            if (state.state == State.OPEN) {
-                // Check if reset timeout has elapsed
-                if (Instant.now().isAfter(state.lastFailureTime.plusSeconds(resetTimeoutSeconds))) {
-                    state.state = State.HALF_OPEN;
-                    log.info("Circuit breaker for {} transitioning to HALF_OPEN", url);
-                    return false; // Allow one test request
-                }
-                return true; // Still open
+        if (state.state == State.OPEN) {
+            if (Instant.now().isAfter(state.lastFailureTime.plusSeconds(resetTimeoutSeconds))) {
+                state.state = State.HALF_OPEN;
+                log.debug("Circuit breaker for {} transitioning to HALF_OPEN", url);
+                return false;
             }
-            return false; // CLOSED or HALF_OPEN — allow requests
+            return true;
         }
+        return false;
     }
 
-    /**
-     * Record a successful call to the upstream URL.
-     */
     public void recordSuccess(String url) {
         CircuitState state = circuits.get(url);
-        if (state == null) {
-            return;
-        }
-        synchronized (state) {
-            if (state.state == State.HALF_OPEN) {
-                log.info("Circuit breaker for {} closing after successful test request", url);
-            }
-            state.state = State.CLOSED;
-            state.failureCount = 0;
-        }
+        if (state == null) return;
+        state.state = State.CLOSED;
+        state.failureCount = 0;
     }
 
-    /**
-     * Record a failed call to the upstream URL.
-     */
     public void recordFailure(String url) {
         CircuitState state = circuits.computeIfAbsent(url, k -> new CircuitState());
-        synchronized (state) {
-            state.failureCount++;
-            state.lastFailureTime = Instant.now();
+        state.failureCount++;
+        state.lastFailureTime = Instant.now();
 
-            if (state.state == State.HALF_OPEN) {
-                // Test request failed — back to OPEN
-                state.state = State.OPEN;
-                log.warn("Circuit breaker for {} re-opening after failed test request", url);
-            } else if (state.failureCount >= failureThreshold) {
-                state.state = State.OPEN;
-                log.warn("Circuit breaker for {} opened after {} consecutive failures", url, state.failureCount);
-            }
+        if (state.state == State.HALF_OPEN) {
+            state.state = State.OPEN;
+            log.warn("Circuit breaker for {} re-opening after failed test request", url);
+        } else if (state.failureCount >= failureThreshold) {
+            state.state = State.OPEN;
+            log.warn("Circuit breaker for {} opened after {} failures", url, state.failureCount);
         }
     }
 

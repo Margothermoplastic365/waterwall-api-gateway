@@ -80,7 +80,7 @@ public class RequestTimingFilter implements Filter {
             // Structured log line for request tracing
             String method = request.getMethod();
             int status = response.getStatus();
-            log.info("trace={} method={} path={} status={} latencyMs={}",
+            log.debug("trace={} method={} path={} status={} latencyMs={}",
                     traceId != null ? traceId : "-",
                     method, path, status, latencyMs);
         }

@@ -117,16 +117,23 @@ public class IpFilterFilter implements Filter {
         return request.getRemoteAddr();
     }
 
+    // Cache InetAddress lookups to avoid per-request DNS resolution
+    private static final java.util.concurrent.ConcurrentHashMap<String, InetAddress> inetCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private boolean isIpInList(String ip, List<CidrRange> ranges) {
         try {
-            InetAddress addr = InetAddress.getByName(ip);
+            InetAddress addr = inetCache.computeIfAbsent(ip, k -> {
+                try { return InetAddress.getByName(k); }
+                catch (UnknownHostException e) { return null; }
+            });
+            if (addr == null) return false;
             for (CidrRange range : ranges) {
                 if (range.contains(addr)) {
                     return true;
                 }
             }
-        } catch (UnknownHostException e) {
-            log.warn("Cannot parse client IP '{}': {}", ip, e.getMessage());
+        } catch (Exception e) {
+            log.debug("Cannot parse client IP '{}': {}", ip, e.getMessage());
         }
         return false;
     }
