@@ -61,6 +61,14 @@ public class RateLimitFilter implements Filter {
     private static final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> WINDOW_COUNTERS =
             new java.util.concurrent.ConcurrentHashMap<>();
 
+    /** Shared platform thread pool for async RabbitMQ rate-limit sync — avoids virtual thread pinning */
+    private static final java.util.concurrent.ExecutorService SYNC_EXECUTOR =
+            java.util.concurrent.Executors.newFixedThreadPool(2, r -> {
+                Thread t = new Thread(r, "ratelimit-sync");
+                t.setDaemon(true);
+                return t;
+            });
+
     public RateLimitFilter(RateLimitCounter rateLimitCounter,
                            EventPublisher eventPublisher,
                            StrictRateLimitService strictRateLimitService,
@@ -194,12 +202,17 @@ public class RateLimitFilter implements Filter {
             }
         }
 
-        // Async broadcast for cross-node awareness (best-effort, non-blocking)
+        // Async broadcast for cross-node awareness (best-effort, fire-and-forget)
+        // Run on shared platform thread pool to avoid virtual thread pinning on AMQP synchronized blocks
         try {
             String syncKey = "ratelimit:" + appId + ":" + apiId;
-            eventPublisher.publishRateLimitSync(syncKey, 1, nodeId);
+            SYNC_EXECUTOR.execute(() -> {
+                try {
+                    eventPublisher.publishRateLimitSync(syncKey, 1, nodeId);
+                } catch (Exception ignored) {}
+            });
         } catch (Exception e) {
-            log.debug("Failed to publish rate limit sync event: {}", e.getMessage());
+            log.debug("Failed to queue rate limit sync event: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);

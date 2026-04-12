@@ -99,6 +99,11 @@ gateway:
         max-retries: ${LB_RETRY_MAX:2}
         backoff-ms: ${LB_RETRY_BACKOFF:100}
 
+    # ── Backpressure ──
+    backpressure:
+      max-concurrent: ${GATEWAY_BACKPRESSURE_MAX:5000}
+      retry-after-seconds: ${GATEWAY_BACKPRESSURE_RETRY:2}
+
     # ── Rate limiting ──
     rate-limit:
       sync-enabled: ${RATELIMIT_SYNC_ENABLED:true}
