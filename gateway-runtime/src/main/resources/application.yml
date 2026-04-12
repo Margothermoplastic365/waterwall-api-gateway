@@ -1,13 +1,14 @@
 server:
   port: ${GATEWAY_HTTP_PORT:8080}
   tomcat:
-    accept-count: ${GATEWAY_ACCEPT_COUNT:1000}
-    max-connections: ${GATEWAY_MAX_CONNECTIONS:10000}
+    accept-count: ${GATEWAY_ACCEPT_COUNT:10000}
+    max-connections: ${GATEWAY_MAX_CONNECTIONS:50000}
     threads:
-      max: ${GATEWAY_THREADS_MAX:200}
-      min-spare: ${GATEWAY_THREADS_MIN:20}
-    connection-timeout: ${GATEWAY_CONNECTION_TIMEOUT:3000}
-    keep-alive-timeout: ${GATEWAY_KEEP_ALIVE_TIMEOUT:30000}
+      max: ${GATEWAY_THREADS_MAX:500}
+      min-spare: ${GATEWAY_THREADS_MIN:100}
+    connection-timeout: ${GATEWAY_CONNECTION_TIMEOUT:2000}
+    keep-alive-timeout: ${GATEWAY_KEEP_ALIVE_TIMEOUT:60000}
+    max-keep-alive-requests: ${GATEWAY_MAX_KEEP_ALIVE_REQUESTS:10000}
 
 spring:
   application:
@@ -24,12 +25,12 @@ spring:
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: ${DB_POOL_SIZE:30}
-      minimum-idle: 5
-      idle-timeout: 300000
+      maximum-pool-size: ${DB_POOL_SIZE:100}
+      minimum-idle: 20
+      idle-timeout: 120000
       max-lifetime: 1800000
-      connection-timeout: 30000
-      leak-detection-threshold: 60000
+      connection-timeout: 5000
+      leak-detection-threshold: 30000
       schema: gateway
 
   jpa:

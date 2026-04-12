@@ -31,10 +31,10 @@ public class RestClientConfig {
     @Value("${gateway.runtime.proxy.read-timeout:30000}")
     private int readTimeout;
 
-    @Value("${gateway.runtime.proxy.pool.max-total:1000}")
+    @Value("${gateway.runtime.proxy.pool.max-total:5000}")
     private int poolMaxTotal;
 
-    @Value("${gateway.runtime.proxy.pool.max-per-route:500}")
+    @Value("${gateway.runtime.proxy.pool.max-per-route:2000}")
     private int poolMaxPerRoute;
 
     @Bean
