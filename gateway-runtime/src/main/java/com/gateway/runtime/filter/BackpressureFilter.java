@@ -31,10 +31,10 @@ public class BackpressureFilter implements Filter {
     private final ObjectMapper objectMapper;
     private final AtomicInteger activeRequests = new AtomicInteger(0);
 
-    @Value("${gateway.runtime.backpressure.max-concurrent:10000}")
+    @Value("${gateway.runtime.backpressure.max-concurrent:500}")
     private int maxConcurrent;
 
-    @Value("${gateway.runtime.backpressure.retry-after-seconds:1}")
+    @Value("${gateway.runtime.backpressure.retry-after-seconds:2}")
     private int retryAfterSeconds;
 
     public BackpressureFilter(ObjectMapper objectMapper) {
