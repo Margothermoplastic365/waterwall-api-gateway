@@ -20,10 +20,10 @@ import org.springframework.web.client.RestClient;
 @Configuration
 public class RestClientConfig {
 
-    @Value("${gateway.runtime.proxy.connect-timeout:10000}")
+    @Value("${gateway.runtime.proxy.connect-timeout:3000}")
     private int connectTimeout;
 
-    @Value("${gateway.runtime.proxy.read-timeout:60000}")
+    @Value("${gateway.runtime.proxy.read-timeout:30000}")
     private int readTimeout;
 
     @Bean
