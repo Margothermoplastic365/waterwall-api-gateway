@@ -672,4 +672,78 @@ public class PostgresRequestLogStore implements RequestLogStore {
         if (value == null) return 0.0;
         return Math.round(((Number) value).doubleValue() * 100.0) / 100.0;
     }
+
+    // ── Latency Breakdown ──────────────────────────────────────────────
+
+    @Override
+    public List<Map<String, Object>> getPerApiLatencyBreakdown(String interval) {
+        String sql = """
+            SELECT
+                rl.api_id,
+                COALESCE(a.name, CAST(rl.api_id AS text)) AS api_name,
+                COUNT(*) AS total_requests,
+                ROUND(AVG(rl.latency_ms)::numeric, 1) AS avg_total_ms,
+                ROUND(COALESCE(AVG(rl.upstream_latency_ms), 0)::numeric, 1) AS avg_upstream_ms,
+                ROUND(COALESCE(AVG(rl.gateway_latency_ms), 0)::numeric, 1) AS avg_gateway_ms,
+                ROUND(COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY rl.latency_ms), 0)::numeric, 1) AS p95_total_ms,
+                ROUND(COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY rl.upstream_latency_ms), 0)::numeric, 1) AS p95_upstream_ms,
+                MAX(rl.latency_ms) AS max_total_ms,
+                MAX(rl.upstream_latency_ms) AS max_upstream_ms
+            FROM analytics.request_logs rl
+            LEFT JOIN gateway.apis a ON a.id = rl.api_id
+            WHERE rl.api_id IS NOT NULL
+              AND rl.created_at >= NOW() - INTERVAL '%s'
+            GROUP BY rl.api_id, a.name
+            ORDER BY avg_total_ms DESC
+            """.formatted(sanitizeInterval(interval));
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("apiId", rs.getString("api_id"));
+            row.put("apiName", rs.getString("api_name"));
+            row.put("totalRequests", rs.getLong("total_requests"));
+            row.put("avgTotalMs", rs.getDouble("avg_total_ms"));
+            row.put("avgUpstreamMs", rs.getDouble("avg_upstream_ms"));
+            row.put("avgGatewayMs", rs.getDouble("avg_gateway_ms"));
+            row.put("p95TotalMs", rs.getDouble("p95_total_ms"));
+            row.put("p95UpstreamMs", rs.getDouble("p95_upstream_ms"));
+            row.put("maxTotalMs", rs.getInt("max_total_ms"));
+            row.put("maxUpstreamMs", rs.getObject("max_upstream_ms"));
+            return row;
+        });
+    }
+
+    @Override
+    public List<Map<String, Object>> getRequestSamples(UUID apiId, int limit) {
+        String sql = """
+            SELECT
+                rl.id,
+                rl.method,
+                rl.path,
+                rl.status_code,
+                rl.latency_ms AS total_ms,
+                COALESCE(rl.upstream_latency_ms, 0) AS upstream_ms,
+                COALESCE(rl.gateway_latency_ms, 0) AS gateway_ms,
+                rl.client_ip,
+                rl.created_at
+            FROM analytics.request_logs rl
+            WHERE rl.api_id = ?
+            ORDER BY rl.created_at DESC
+            LIMIT ?
+            """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("id", rs.getLong("id"));
+            row.put("method", rs.getString("method"));
+            row.put("path", rs.getString("path"));
+            row.put("statusCode", rs.getInt("status_code"));
+            row.put("totalMs", rs.getInt("total_ms"));
+            row.put("upstreamMs", rs.getInt("upstream_ms"));
+            row.put("gatewayMs", rs.getInt("gateway_ms"));
+            row.put("clientIp", rs.getString("client_ip"));
+            row.put("createdAt", rs.getTimestamp("created_at"));
+            return row;
+        }, apiId, limit);
+    }
 }

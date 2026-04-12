@@ -28,6 +28,10 @@ public interface RequestLogStore {
     // MetricsStreamController
     Map<String, Object> getRealtimeMetrics(); // last 60 seconds
 
+    // Latency breakdown
+    List<Map<String, Object>> getPerApiLatencyBreakdown(String interval);
+    List<Map<String, Object>> getRequestSamples(UUID apiId, int limit);
+
     // ReportSchedulerService
     Map<String, Object> getReportSummary(String interval);
     List<Map<String, Object>> getReportTopApis(String interval, int limit);

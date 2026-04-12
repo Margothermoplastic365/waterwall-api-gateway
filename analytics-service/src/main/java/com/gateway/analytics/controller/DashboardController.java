@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -59,6 +60,19 @@ public class DashboardController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=dashboard-report.csv")
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(csv);
+    }
+
+    @GetMapping("/latency-breakdown")
+    public ResponseEntity<List<Map<String, Object>>> getLatencyBreakdown(
+            @RequestParam(defaultValue = "24h") String range) {
+        return ResponseEntity.ok(dashboardService.getPerApiLatencyBreakdown(range));
+    }
+
+    @GetMapping("/api/{apiId}/samples")
+    public ResponseEntity<List<Map<String, Object>>> getRequestSamples(
+            @PathVariable UUID apiId,
+            @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(dashboardService.getRequestSamples(apiId, limit));
     }
 
     @GetMapping("/compare")

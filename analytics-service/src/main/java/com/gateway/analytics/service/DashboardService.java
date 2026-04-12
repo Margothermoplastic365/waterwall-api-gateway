@@ -113,6 +113,21 @@ public class DashboardService {
         return store.compareApis(apiIds, interval);
     }
 
+    /**
+     * Per-API latency breakdown: total, upstream, and gateway average latency.
+     */
+    public List<Map<String, Object>> getPerApiLatencyBreakdown(String timeRange) {
+        String interval = toInterval(timeRange);
+        return store.getPerApiLatencyBreakdown(interval);
+    }
+
+    /**
+     * Recent request samples for a specific API showing latency breakdown.
+     */
+    public List<Map<String, Object>> getRequestSamples(UUID apiId, int limit) {
+        return store.getRequestSamples(apiId, Math.min(limit, 100));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private String toInterval(String timeRange) {

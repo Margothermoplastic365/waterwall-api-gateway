@@ -721,4 +721,14 @@ public class ClickHouseRequestLogStore implements RequestLogStore {
         if (value == null) return 0.0;
         return Math.round(((Number) value).doubleValue() * 100.0) / 100.0;
     }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getPerApiLatencyBreakdown(String interval) {
+        return java.util.List.of(); // TODO: implement for ClickHouse
+    }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getRequestSamples(java.util.UUID apiId, int limit) {
+        return java.util.List.of(); // TODO: implement for ClickHouse
+    }
 }
