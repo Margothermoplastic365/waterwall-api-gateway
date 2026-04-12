@@ -1,12 +1,13 @@
 server:
   port: ${GATEWAY_HTTP_PORT:8080}
   tomcat:
-    accept-count: 500
-    max-connections: 2000
+    accept-count: ${GATEWAY_ACCEPT_COUNT:1000}
+    max-connections: ${GATEWAY_MAX_CONNECTIONS:10000}
     threads:
-      max: 400
-      min-spare: 50
-    connection-timeout: 5000
+      max: ${GATEWAY_THREADS_MAX:200}
+      min-spare: ${GATEWAY_THREADS_MIN:20}
+    connection-timeout: ${GATEWAY_CONNECTION_TIMEOUT:3000}
+    keep-alive-timeout: ${GATEWAY_KEEP_ALIVE_TIMEOUT:30000}
 
 spring:
   application:
