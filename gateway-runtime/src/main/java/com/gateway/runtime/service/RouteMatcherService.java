@@ -44,11 +44,24 @@ public class RouteMatcherService {
     public MatchedRoute match(String requestPath, String requestMethod) {
         List<GatewayRoute> allRoutes = routeConfigService.getAllRoutes();
 
+        // Pre-filter: only consider routes whose first path segment matches the request
+        // This narrows candidates from O(n) to O(k) where k << n for context-path-based routing
+        String requestFirstSegment = extractFirstSegment(requestPath);
+        List<GatewayRoute> candidates = new ArrayList<>();
+        for (GatewayRoute route : allRoutes) {
+            String routeFirstSegment = extractFirstSegment(route.getPath());
+            if (routeFirstSegment.equals(requestFirstSegment)
+                    || routeFirstSegment.isEmpty()
+                    || route.getPath().endsWith(GLOB_SUFFIX)) {
+                candidates.add(route);
+            }
+        }
+
         MatchedRoute bestMatch = null;
         int bestPriority = Integer.MIN_VALUE;
         int bestSpecificity = -1; // 3 = exact, 2 = path-variable, 1 = prefix
 
-        for (GatewayRoute route : allRoutes) {
+        for (GatewayRoute route : candidates) {
             if (!route.isEnabled()) {
                 continue;
             }
@@ -231,5 +244,16 @@ public class RouteMatcherService {
         } else {
             return base + path;
         }
+    }
+
+    /**
+     * Extracts the first path segment for fast pre-filtering.
+     * e.g., "/jsonplaceholder-api/posts" → "jsonplaceholder-api"
+     */
+    private static String extractFirstSegment(String path) {
+        if (path == null || path.length() <= 1) return "";
+        String p = path.startsWith("/") ? path.substring(1) : path;
+        int slash = p.indexOf('/');
+        return slash > 0 ? p.substring(0, slash) : p;
     }
 }
