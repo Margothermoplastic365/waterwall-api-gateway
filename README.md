@@ -32,8 +32,8 @@ Single-machine benchmark — all 7 services, PostgreSQL, and RabbitMQ on one box
 | Developer portal UI | ✅ | Enterprise only | ✅ | ✅ | Paid |
 | Built-in monetization & billing | ✅ | ❌ | ✅ | Enterprise only | ❌ |
 | Real-time analytics + SLA monitoring | ✅ | Enterprise only | ✅ | ✅ | Enterprise only |
-| Custom Java 21 virtual-thread data plane | ✅ | N/A (Lua/Go) | ❌ | ❌ | N/A (Go) |
-| Single-command deploy | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Java 21 + virtual threads (blocking code, no reactive) | ✅ | N/A (Lua/Go) | ❌ | ❌ | N/A (Go) |
+| One-command install on a blank machine | ✅ | ✅ | ❌ | ❌ | ✅ |
 | Fully open source (Apache 2.0) | ✅ | Partial | Partial | Partial | Partial |
 
 > **Data plane:** Waterwall's `gateway-runtime` is a custom reverse proxy built on Spring Boot + Tomcat with Java 21 virtual threads and Apache HttpClient 5 connection pooling — no Spring Cloud Gateway, no Netty WebFlux. Owning the hot path is what makes optimizations like the lock-free circuit breaker, async access logging, and the virtual-thread pinning fix possible. A separate Netty port on 9090 handles gRPC.
@@ -480,15 +480,9 @@ docker compose --profile clickhouse up -d
 
 #### How the switch works
 
-The analytics-service uses a strategy pattern with Spring profiles:
+The analytics-service uses a strategy pattern with Spring profiles — the concrete implementation is selected at startup based on which profile is active:
 
-```
-                     RequestLogStore (interface)
-                      /                    \
-   @Profile("!clickhouse")          @Profile("clickhouse")
-   PostgresRequestLogStore          ClickHouseRequestLogStore
-   (default — uses PostgreSQL)      (uses ClickHouse JDBC)
-```
+![RequestLogStore strategy pattern](architecture/request-log-store-strategy.svg)
 
 All other services are completely unaffected — they always use PostgreSQL.
 
